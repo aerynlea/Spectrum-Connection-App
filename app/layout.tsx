@@ -1,0 +1,53 @@
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
+
+import { ClerkProvider } from "@clerk/nextjs";
+
+import { SiteHeader } from "@/components/site-header";
+import { isClerkConfigured } from "@/lib/platform";
+
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "Guiding Light | Autism Support and Resource Community",
+  description:
+    "Guiding Light is a resource-sharing and connection platform for autistic people, parents, caregivers, and professionals across every age group.",
+};
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export default async function RootLayout({
+  children,
+}: Readonly<{
+  children: ReactNode;
+}>) {
+  const appBody = (
+    <>
+      <div className="page-backdrop" />
+      <SiteHeader />
+      <main className="app-shell">{children}</main>
+      <footer className="site-footer">
+        <div>
+          <p className="footer-title">Guiding Light</p>
+          <p className="footer-copy">
+            A calm, connected home for autism-focused resources, support, and
+            community.
+          </p>
+        </div>
+        <p className="footer-copy">
+          Built around the belief that every journey deserves trustworthy
+          guidance, belonging, and room to grow.
+        </p>
+      </footer>
+    </>
+  );
+
+  return (
+    <html lang="en">
+      <body>
+        {isClerkConfigured ? <ClerkProvider>{appBody}</ClerkProvider> : appBody}
+      </body>
+    </html>
+  );
+}
