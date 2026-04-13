@@ -21,6 +21,10 @@ const LOCATION_TAG_RULES: Array<{ tag: string; patterns: string[] }> = [
     patterns: ["orange county", "irvine", "costa mesa", "santa ana", "buena park", "silverado"],
   },
   {
+    tag: "san-diego-county",
+    patterns: ["san diego", "carlsbad", "chula vista", "escondido", "oceanside"],
+  },
+  {
     tag: "southern-california",
     patterns: [
       "southern california",

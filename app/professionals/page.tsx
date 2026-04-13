@@ -31,8 +31,8 @@ export default async function ProfessionalsPage({
   return (
     <div className="page">
       <section className="page-intro">
-        <p className="eyebrow">Verified Professionals</p>
-        <h1>Trusted experts can participate in ways that strengthen the whole community.</h1>
+        <p className="eyebrow">Trusted Professionals</p>
+        <h1>Meet therapists, educators, and providers families can explore with more confidence.</h1>
         <p className="hero-lead">
           Families can discover trusted providers, understand how they help,
           and decide who may be a good fit for their needs.
@@ -43,7 +43,7 @@ export default async function ProfessionalsPage({
               className="button-primary"
               href={isClerkConfigured ? "/sign-up" : "/auth"}
             >
-              Create a member profile
+              Create your profile
             </Link>
           </div>
         ) : null}
@@ -54,9 +54,9 @@ export default async function ProfessionalsPage({
       <section className="section split-layout">
         <div className="section-panel">
           <SectionHeading
-            eyebrow="Directory"
-            intro="Meet professionals who support communication, regulation, learning, and everyday life."
-            title="Verified voices in the network."
+            eyebrow="Meet the professionals"
+            intro="Explore therapists, educators, and support teams who help with communication, regulation, learning, and everyday life."
+            title="Professionals families can feel good about exploring."
           />
           <div className="stack-list">
             {featuredProfessionals.map((professional) => (
@@ -83,7 +83,7 @@ export default async function ProfessionalsPage({
                   rel="noreferrer"
                   target="_blank"
                 >
-                  Visit organization
+                  Visit their site
                 </Link>
               </article>
             ))}
@@ -92,9 +92,9 @@ export default async function ProfessionalsPage({
 
         <div className="section-panel section-panel--accent">
           <SectionHeading
-            eyebrow="Verification flow"
+            eyebrow="How trust is earned"
             intro="Families deserve clarity about who they are hearing from and why that voice can be trusted."
-            title="How Guiding Light builds trust."
+            title="How professionals are reviewed."
           />
           <div className="support-steps">
             {verificationSteps.map((step, index) => (
@@ -114,7 +114,7 @@ export default async function ProfessionalsPage({
           <SectionHeading
             eyebrow="Broader support"
             intro="These trusted organizations can still help even if they are not closest to your area."
-            title="National and statewide options."
+            title="More trusted options to explore."
           />
           <div className="stack-list">
             {providerSections.broader.map((professional) => (
@@ -128,7 +128,7 @@ export default async function ProfessionalsPage({
                   rel="noreferrer"
                   target="_blank"
                 >
-                  Open provider page
+                  Learn more
                 </Link>
               </article>
             ))}

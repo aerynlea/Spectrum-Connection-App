@@ -46,11 +46,11 @@ export default async function DashboardPage({
   return (
     <div className="page">
       <section className="page-intro">
-        <p className="eyebrow">Dashboard</p>
-        <h1>Your support space now responds to your profile and priorities.</h1>
+        <p className="eyebrow">Your Space</p>
+        <h1>Your support space reflects what matters most to you.</h1>
         <p className="hero-lead">
-          Save what matters, keep your profile current, and use the dashboard as
-          the hub between resources, events, and community support.
+          Save what matters, keep your profile current, and move easily between
+          resources, events, and community support.
         </p>
         <div className="pill-list">
           {currentUser.goals.map((goal) => (
@@ -71,7 +71,7 @@ export default async function DashboardPage({
         </article>
         <article className="stat-card stat-card--wide">
           <strong>{recommendations.resources.length}</strong>
-          <span>Suggested resources</span>
+          <span>Support picks for you</span>
         </article>
         <article className="stat-card stat-card--wide">
           <strong>{recommendations.events.length}</strong>
@@ -82,9 +82,9 @@ export default async function DashboardPage({
       <section className="section split-layout">
         <div className="section-panel">
           <SectionHeading
-            eyebrow="Profile settings"
+            eyebrow="Your profile"
             intro="A few details help Guiding Light bring forward support that feels more relevant to you."
-            title="Keep your support profile current."
+            title="Keep your information up to date."
           />
           <ProfileForm currentUser={currentUser} />
         </div>
@@ -92,8 +92,8 @@ export default async function DashboardPage({
         <div className="section-panel section-panel--accent">
           <SectionHeading
             eyebrow="Profile snapshot"
-            intro="This is the support profile Guiding Light is using right now."
-            title="What your profile currently says."
+            intro="This is the information Guiding Light is using right now."
+            title="Your current profile at a glance."
           />
           <article className="sub-card">
             <h3>{currentUser.name}</h3>
@@ -116,9 +116,9 @@ export default async function DashboardPage({
       <section className="section split-layout">
         <div className="section-panel">
           <SectionHeading
-            eyebrow="Recommended resources"
-            intro="Chosen around your role, age focus, goals, and what you have already saved."
-            title="A better starting point for your next step."
+            eyebrow="Picked for you"
+            intro="Based on your role, age focus, goals, and what you have already saved."
+            title="A helpful place to start today."
           />
           <div className="stack-list">
             {recommendations.resources.map((resource) => (
@@ -156,7 +156,7 @@ export default async function DashboardPage({
           <SectionHeading
             eyebrow="Saved resources"
             intro="Keep your most useful finds in one place so they are easy to return to."
-            title="Your saved list."
+            title="What you want to come back to."
           />
           {savedResources.length > 0 ? (
             <div className="stack-list">
@@ -185,8 +185,8 @@ export default async function DashboardPage({
           ) : (
             <div className="empty-state">
               <p>
-                You have not saved any resources yet. Start with the resource
-                hub and bookmark the options that feel useful.
+                You have not saved any resources yet. Start in the support
+                library and save the options that feel useful.
               </p>
               <Link className="button-secondary" href="/resources">
                 Explore resources
@@ -199,7 +199,7 @@ export default async function DashboardPage({
       <section className="section split-layout">
         <div className="section-panel section-panel--accent">
           <SectionHeading
-            eyebrow="Upcoming matches"
+            eyebrow="Upcoming events"
             intro="A few upcoming events that may feel especially relevant right now."
             title="Events you may want to keep an eye on."
           />
@@ -268,7 +268,7 @@ export default async function DashboardPage({
 
         <div className="section-panel">
           <SectionHeading
-            eyebrow="Broader opportunities"
+            eyebrow="More ways to stay connected"
             intro="A wider mix of virtual and national events helps you stay connected even when nothing local fits yet."
             title="National and online options."
           />
@@ -298,7 +298,7 @@ export default async function DashboardPage({
         <SectionHeading
           eyebrow="Message board"
           intro="Drop into encouraging conversations whenever you want ideas, reassurance, or practical tips."
-          title="Support happening in the community right now."
+          title="Support happening in the community today."
         />
         <div className="card-grid card-grid--three">
           {recentPosts.map((post) => (
@@ -318,7 +318,7 @@ export default async function DashboardPage({
         <SectionHeading
           eyebrow="Real voices"
           intro="A few words from autistic advocates and leaders who have helped shape the conversation."
-          title="Voices worth carrying with you."
+          title="Words worth carrying with you."
         />
         <div className="card-grid card-grid--three">
           {profileQuotes.map((quote) => (

@@ -39,7 +39,7 @@ export default async function CommunityPage({
   return (
     <div className="page">
       <section className="page-intro">
-        <p className="eyebrow">Community Message Board</p>
+        <p className="eyebrow">Community</p>
         <h1>A live support network for questions, encouragement, and shared wisdom.</h1>
         <p className="hero-lead">
           Ask questions, share what is working, and hear from people who
@@ -70,7 +70,7 @@ export default async function CommunityPage({
 
         <div className="section-panel section-panel--accent">
           <SectionHeading
-            eyebrow="Post to the forum"
+            eyebrow="Start a conversation"
             intro="Start a conversation when you need ideas, encouragement, or a place to share progress."
             title={
               currentUser
@@ -122,7 +122,7 @@ export default async function CommunityPage({
                 />
               </label>
               <button className="button-primary" type="submit">
-                Publish post
+                Share with the community
               </button>
             </form>
           ) : (
@@ -145,9 +145,9 @@ export default async function CommunityPage({
       <section className="section split-layout">
         <div className="section-panel">
           <SectionHeading
-            eyebrow="Live forum feed"
+            eyebrow="Recent conversations"
             intro="See what families, self-advocates, and professionals are talking about right now."
-            title="A message board people can answer together."
+            title="Questions, encouragement, and answers in one place."
           />
           <div className="stack-list">
             {posts.map((thread) => (
@@ -190,7 +190,7 @@ export default async function CommunityPage({
                   </form>
                 ) : (
                   <p className="meta-copy">
-                    Sign in to reply and build the conversation.
+                    Sign in to reply and stay part of the conversation.
                   </p>
                 )}
               </article>

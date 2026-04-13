@@ -76,13 +76,13 @@ export default async function ResourcesPage({
   return (
     <div className="page">
       <section className="page-intro">
-        <p className="eyebrow">Resource Directory</p>
-        <h1>Real resources for support at home, in community, and online.</h1>
+        <p className="eyebrow">Find support</p>
+        <h1>Support for home, school, community, and everyday life.</h1>
         <p className="hero-lead">
-          Browse verified resources for therapies, haircut and grooming
-          support, caregiver applications, PBS videos, learning links, and
-          spectrum-friendly digital spaces in one place that feels easier to
-          return to.
+          Browse trusted links for school and insurance questions, theme park
+          access, spectrum-friendly playplaces, haircut support, caregiver
+          applications, communication tools, PBS videos, and everyday sensory
+          help in one place that feels easier to return to.
         </p>
       </section>
 
@@ -91,9 +91,9 @@ export default async function ResourcesPage({
 
       <section className="section">
         <SectionHeading
-          eyebrow="Quick starts"
-          intro="Start with the kind of help you need right now instead of scrolling through everything at once."
-          title="A calmer way to open the directory."
+          eyebrow="Start here"
+          intro="Begin with the kind of help that feels most useful today."
+          title="Choose the support you need right now."
         />
         <div className="card-grid card-grid--five">
           {quickStarts.map((quickStart) => (
@@ -118,9 +118,9 @@ export default async function ResourcesPage({
       <section className="section split-layout">
         <div className="section-panel">
           <SectionHeading
-            eyebrow="Find the right fit"
-            intro="Use just a few filters to narrow the list without making the page feel busy."
-            title="Filter by need, age focus, or collection."
+            eyebrow="Narrow it down"
+            intro="Use just a few filters to make the list feel easier to manage."
+            title="Search by need, age, or type of support."
           />
 
           <form className="form-card">
@@ -130,15 +130,15 @@ export default async function ResourcesPage({
                 <input
                   defaultValue={filters.query}
                   name="query"
-                  placeholder="Search PBS, caregiver benefits, learning tools, and more"
+                  placeholder="Search school help, Disney DAS, playplaces, haircuts, AAC, PBS, and more"
                   type="text"
                 />
               </label>
 
               <label className="field">
-                <span>Collection</span>
+                <span>Support area</span>
                 <select defaultValue={filters.collection} name="collection">
-                  <option value="">All collections</option>
+                  <option value="">All support areas</option>
                   {options.collections.map((collection) => (
                     <option key={collection} value={collection}>
                       {collection}
@@ -174,7 +174,7 @@ export default async function ResourcesPage({
 
             <div className="button-row" style={{ marginTop: "0.35rem" }}>
               <button className="button-primary" type="submit">
-                Update results
+                Show matches
               </button>
               <Link className="button-secondary" href="/resources">
                 Clear filters
@@ -185,24 +185,29 @@ export default async function ResourcesPage({
 
         <div className="section-panel section-panel--accent">
           <SectionHeading
-            eyebrow="Helpful for home"
-            intro="These newer sections were added for families who want quick access to everyday digital support."
-            title="What you can find here now."
+            eyebrow="Helpful to know"
+            intro="California families often have more than one system to work through at the same time."
+            title="School support and insurance support usually do not run through the same doorway."
           />
           <ul className="bullet-list bullet-list--wide">
-            <li>Spectrum-friendly gaming and online community links.</li>
-            <li>PBS and PBS KIDS videos you can open right away.</li>
-            <li>Learning tools for younger children and family support routines.</li>
-            <li>Official caregiver application and benefit pages for at-home support.</li>
+            <li>A school district evaluation helps decide special education eligibility and school services.</li>
+            <li>A medical or insurance evaluation is a separate path for diagnosis, treatment, and coverage.</li>
+            <li>You will also find official outing links here for DAS, access passes, maps, and calmer care spaces.</li>
+            <li>Families can browse playplaces, speaking tools, fidgets, swings, and fort-building ideas in the same hub.</li>
           </ul>
+          <p className="meta-copy">
+            This California note is a practical guide for families and not legal
+            advice. When in doubt, the official school and insurance pages below
+            can help you prepare for both conversations.
+          </p>
         </div>
       </section>
 
       <section className="section">
         <SectionHeading
-          eyebrow="Results"
-          intro={`Showing ${filteredResources.length} resource${filteredResources.length === 1 ? "" : "s"} that match your current filters.`}
-          title="Verified resources you can actually use."
+          eyebrow="Support matches"
+          intro={`Showing ${filteredResources.length} resource${filteredResources.length === 1 ? "" : "s"} that fit what you picked.`}
+          title="Options you can explore now."
         />
 
         {filteredResources.length > 0 ? (
@@ -219,11 +224,11 @@ export default async function ResourcesPage({
         ) : (
           <div className="empty-state">
             <p>
-              Nothing matched those filters yet. Try a broader search or clear
-              one filter to bring more options back into view.
+              Nothing matched that combination yet. Try a broader search or
+              clear a filter to bring more options back into view.
             </p>
             <Link className="button-secondary" href="/resources">
-              Reset the directory
+              Show everything again
             </Link>
           </div>
         )}

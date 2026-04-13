@@ -78,40 +78,40 @@ export const audienceGroups = [
 
 export const featureCards: FeatureCard[] = [
   {
-    label: "Age-Specific Guidance",
-    title: "Support changes as life changes.",
+    label: "By Stage of Life",
+    title: "Support can grow with your family.",
     description:
-      "Content is organized around childhood, school-age years, transition planning, adulthood, and caregiver wellbeing so people can find the right next step without digging through unrelated information.",
+      "Find early support, school help, transition guidance, adult resources, and caregiver encouragement without sorting through what does not fit.",
   },
   {
-    label: "Personalized Discovery",
-    title: "Recommendations feel tailored, not overwhelming.",
+    label: "Made for Your Needs",
+    title: "Support feels easier to find when it fits real life.",
     description:
-      "Users can filter by age, goals, location, and daily challenges to surface therapies, educational programs, and sensory-friendly opportunities that actually fit their world.",
+      "Search by age, goals, location, and day-to-day needs to find therapies, educational programs, and sensory-friendly options that feel relevant right now.",
   },
   {
-    label: "Community First",
+    label: "Community Care",
     title: "Connection is part of every step.",
     description:
       "Topic-specific forums, local circles, and guided discussion prompts help families and self-advocates swap advice, celebrate wins, and reduce isolation.",
   },
   {
-    label: "Events and Workshops",
-    title: "Practical support shows up on the calendar.",
+    label: "Events Near You",
+    title: "Helpful gatherings are easier to spot.",
     description:
       "A location-aware event feed highlights webinars, support groups, therapy workshops, and inclusive community gatherings across every age group.",
   },
   {
-    label: "Verified Professionals",
-    title: "Trusted guidance lives alongside peer support.",
+    label: "Trusted Professional Guidance",
+    title: "Expert support can sit beside lived experience.",
     description:
-      "Therapists, educators, coaches, and service providers can earn verification badges so users can separate lived-experience advice from licensed professional input.",
+      "Therapists, educators, coaches, and providers are clearly identified so families know when advice comes from licensed or professional support.",
   },
   {
-    label: "Safe by Design",
-    title: "Supportive spaces need clear boundaries.",
+    label: "A Respectful Space",
+    title: "Kindness and privacy stay at the center.",
     description:
-      "Moderation tools, community agreements, and privacy-forward profile choices help people participate at a pace that feels comfortable and secure.",
+      "Community guidelines, privacy choices, and clear moderation help people participate at a pace that feels comfortable and safe.",
   },
 ];
 
@@ -229,7 +229,7 @@ export const resourceCollections: ResourceCollection[] = [
         detail: "Explore budgeting, transportation, meal planning, safety, and household routines through practical guides.",
       },
       {
-        title: "Community life directory",
+        title: "Community life guide",
         detail: "Locate social clubs, volunteer openings, recreation spaces, and support programs built for adults on the spectrum.",
       },
     ],
@@ -241,25 +241,25 @@ export const communityTopics: CommunityTopic[] = [
     title: "Parent Support Forum",
     description:
       "Ask questions, share progress, and swap day-to-day strategies with families who understand the emotional reality behind the logistics.",
-    moderators: "Led by peer mentors and caregiver ambassadors",
+    moderators: "Guided by peer mentors and caregiver ambassadors",
   },
   {
     title: "Self-Advocate Voices",
     description:
       "A space where autistic teens and adults can discuss independence, identity, work, relationships, and everyday life on their own terms.",
-    moderators: "Moderated alongside autistic community leaders",
+    moderators: "Held with autistic community leaders",
   },
   {
     title: "Therapy and Education Exchange",
     description:
       "Compare programs, discuss school supports, and gather practical questions to bring into meetings with professionals.",
-    moderators: "Supported by verified therapists and educators",
+    moderators: "Supported by trusted therapists and educators",
   },
   {
     title: "Sensory and Lifestyle Tips",
     description:
       "Share routines, calming setups, product ideas, food strategies, and sensory-friendly activities that have made home life easier.",
-    moderators: "Community-guided with safety review workflows",
+    moderators: "Community-led with gentle moderation",
   },
 ];
 
@@ -337,32 +337,32 @@ export const professionalRoles: ProfessionalRole[] = [
     title: "Therapists",
     focus: "Intervention and regulation support",
     description:
-      "Speech-language pathologists, occupational therapists, counselors, and behavior specialists can publish resources, host office hours, and answer community questions with verification badges.",
+      "Speech-language pathologists, occupational therapists, counselors, and behavior specialists can share practical guidance, workshops, and family-facing resources shaped by real practice.",
   },
   {
     title: "Educators",
     focus: "School success and inclusion",
     description:
-      "Teachers, school psychologists, transition coordinators, and learning specialists can share classroom tools, parent guidance, and program information rooted in practice.",
+      "Teachers, school psychologists, transition coordinators, and learning specialists can share classroom strategies, parent guidance, and school support that families can actually use.",
   },
   {
     title: "Coaches and mentors",
     focus: "Life skills, transition, and confidence",
     description:
-      "Employment coaches, peer mentors, and community advocates can lead topic groups, workshops, and practical guides for teens and adults.",
+      "Employment coaches, peer mentors, and community advocates can offer encouragement, practical guidance, and confidence-building support for teens and adults.",
   },
   {
     title: "Organizations",
     focus: "Programs and trusted referrals",
     description:
-      "Clinics, nonprofits, and local service providers can list events, publish resources, and participate in region-specific support circles.",
+      "Clinics, nonprofits, and local service providers can share events, trusted referrals, and community support for families looking for their next step.",
   },
 ];
 
 export const verificationSteps = [
-  "Professionals submit credentials, specialties, and service regions.",
-  "The platform reviews licenses, affiliations, and public-facing practice information.",
-  "Verified members receive badges and role-specific publishing tools with ongoing moderation.",
+  "Professionals share their credentials, specialties, and service areas.",
+  "Guiding Light reviews licenses, affiliations, and public information before adding a verification badge.",
+  "Verified professionals are clearly labeled so families know when guidance comes from a licensed provider.",
 ];
 
 export const profileQuotes: ProfileQuote[] = [
@@ -393,6 +393,6 @@ export const profileQuotes: ProfileQuote[] = [
 export const safetyCommitments = [
   "Privacy-first profiles let users choose how much to share.",
   "Community agreements set expectations for respect, identity safety, and practical support.",
-  "Moderation pathways make it easy to flag misinformation or harmful interactions.",
+  "Clear reporting options make it easy to flag misinformation or harmful interactions.",
   "Verified guidance is clearly labeled so users can distinguish clinical advice from lived experience.",
 ];

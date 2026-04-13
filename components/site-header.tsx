@@ -12,6 +12,7 @@ const navItems = [
   { href: "/", label: "Home" },
   { href: "/resources", label: "Resources" },
   { href: "/community", label: "Community" },
+  { href: "/global-voices", label: "Global Voices" },
   { href: "/events", label: "Events" },
   { href: "/professionals", label: "Professionals" },
 ];
@@ -20,7 +21,6 @@ export async function SiteHeader() {
   noStore();
   const currentUser = await getCurrentUser();
   const signInHref = isClerkConfigured ? "/sign-in" : "/auth";
-  const signUpHref = isClerkConfigured ? "/sign-up" : "/auth";
 
   return (
     <header className="site-header">
@@ -76,8 +76,8 @@ export async function SiteHeader() {
                     <Link className="nav-secondary mobile-nav__action" href={signInHref}>
                       Sign in
                     </Link>
-                    <Link className="nav-cta mobile-nav__action" href={signUpHref}>
-                      Join the Circle
+                    <Link className="nav-cta mobile-nav__action" href="/resources">
+                      Browse support
                     </Link>
                   </>
                 )}
@@ -105,8 +105,8 @@ export async function SiteHeader() {
               <Link className="nav-secondary" href={signInHref}>
                 Sign in
               </Link>
-              <Link className="nav-cta" href={signUpHref}>
-                Join the Circle
+              <Link className="nav-cta" href="/resources">
+                Browse support
               </Link>
             </>
           )}

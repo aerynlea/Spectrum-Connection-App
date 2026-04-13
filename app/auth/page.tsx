@@ -30,8 +30,8 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
   return (
     <div className="page">
       <section className="page-intro">
-        <p className="eyebrow">Account access</p>
-        <h1>Create your Guiding Light profile and start shaping the experience.</h1>
+        <p className="eyebrow">Join Guiding Light</p>
+        <h1>Create your profile and make this space your own.</h1>
         <p className="hero-lead">
           Create a profile to save resources, join conversations, and start
           seeing support that fits your life a little more closely.
@@ -46,13 +46,13 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
           <div className="section-panel">
             <SectionHeading
               eyebrow="Sign in"
-              intro="Use the secure sign-in flow to open your Guiding Light account."
+              intro="Head to the sign-in page to open your Guiding Light account."
               title="Welcome back."
             />
             <div className="empty-state">
               <p>
-                Continue to the sign-in screens, then finish your profile so
-                Guiding Light can highlight the support that fits you best.
+                Continue to sign in, then finish your profile so support feels
+                more personal each time you come back.
               </p>
               <div className="button-row">
                 <Link className="button-primary" href="/sign-in">
@@ -69,7 +69,7 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
             <SectionHeading
               eyebrow="Getting started"
               intro="A few quick steps help turn your account into a more personal support space."
-              title="What to expect next."
+              title="Here&apos;s what happens next."
             />
             <div className="support-steps">
               <article className="support-step">
@@ -104,7 +104,7 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
           <div className="section-panel">
             <SectionHeading
               eyebrow="Sign in"
-              intro="Use an existing account to access your saved resources, profile settings, and dashboard."
+              intro="Use your account to open your saved resources, profile details, and personal space."
               title="Welcome back."
             />
             <form action={signInAction} className="form-card">
@@ -125,7 +125,7 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
           <div className="section-panel section-panel--accent">
             <SectionHeading
               eyebrow="Create account"
-              intro="Build a profile with just enough detail to drive useful, age-aware recommendations."
+              intro="Share a few details so Guiding Light can surface support that fits your life."
               title="Join the circle."
             />
             <form action={signUpAction} className="form-card">
@@ -206,10 +206,10 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
       <section className="cta-banner">
         <div>
           <p className="eyebrow">What happens next</p>
-          <h2>Once you sign in, you can save resources and post directly in the forum.</h2>
+          <h2>Once you sign in, you can save resources and join the conversation.</h2>
           <p>
-            Your profile will also shape dashboard recommendations across
-            resources and upcoming events.
+            Your profile can also bring forward resources and events that feel
+            closer to your season of life.
           </p>
         </div>
         <div className="button-row">

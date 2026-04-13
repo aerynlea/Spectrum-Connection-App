@@ -28,7 +28,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
   return (
     <div className="page">
       <section className="page-intro">
-        <p className="eyebrow">Events and Workshops</p>
+        <p className="eyebrow">Events and Gatherings</p>
         <h1>Bring support into the real world with workshops, meetups, and inclusive gatherings.</h1>
         <p className="hero-lead">
           Find workshops, gatherings, and virtual sessions that turn helpful
@@ -42,9 +42,9 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
         <section className="section split-layout">
           <div className="section-panel section-panel--accent">
             <SectionHeading
-              eyebrow="Best fits"
+              eyebrow="Picked for you"
               intro="These events line up especially well with your interests and stage of life."
-              title="Recommended events."
+              title="Events that may feel especially helpful right now."
             />
             <div className="stack-list">
               {recommendations.events.map((event) => {
@@ -77,8 +77,8 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
 
           <div className="section-panel">
             <SectionHeading
-              eyebrow="Why this matters"
-              intro="Events turn information into action, relationships, and routines that last beyond a single browse session."
+              eyebrow="Why showing up matters"
+              intro="Events can turn helpful information into relationships, routines, and encouragement that last beyond one visit."
               title="Support becomes more powerful when people can show up together."
             />
             <p className="panel-copy">
@@ -97,7 +97,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
           <SectionHeading
             eyebrow="Near you"
             intro={`These official listings are the closest match for ${currentUser.location}.`}
-            title="Regional events worth watching."
+            title="Nearby events worth watching."
           />
           <div className="stack-list">
             {eventSections.nearby.map((event) => {
@@ -139,7 +139,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
         <SectionHeading
           eyebrow="National and virtual listings"
           intro="Browse broader opportunities for connection, learning, and practical support."
-          title="Official events you can click into right away."
+          title="Official events you can explore right away."
         />
         <div className="stack-list">
           {(currentUser ? eventSections.broader : events).map((event) => {

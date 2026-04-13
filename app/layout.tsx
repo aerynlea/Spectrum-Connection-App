@@ -13,7 +13,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Guiding Light | Autism Support and Resource Community",
   description:
-    "Guiding Light is a resource-sharing and connection platform for autistic people, parents, caregivers, and professionals across every age group.",
+    "Guiding Light helps autistic people, parents, caregivers, and trusted professionals find support, resources, and community at every stage of life.",
 };
 
 export const runtime = "nodejs";

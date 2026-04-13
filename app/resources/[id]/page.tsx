@@ -128,7 +128,7 @@ export default async function ResourceDetailPage({
   return (
     <div className="page">
       <section className="page-intro">
-        <p className="eyebrow">Resource Detail</p>
+        <p className="eyebrow">Support details</p>
         <h1>{resource.title}</h1>
         <p className="hero-lead">{resource.summary}</p>
       </section>
@@ -136,9 +136,9 @@ export default async function ResourceDetailPage({
       <section className="section split-layout">
         <div className="section-panel">
           <SectionHeading
-            eyebrow="Resource overview"
-            title="Helpful details before you click away."
-            intro="This page is meant to give you enough context to decide whether this support feels worth exploring next."
+            eyebrow="Before you click through"
+            title="Helpful details at a glance."
+            intro="This page gives you a quick feel for who it is for, where it fits, and whether it seems worth your time."
           />
 
           <article className="feature-card">
@@ -175,7 +175,7 @@ export default async function ResourceDetailPage({
                 {resource.tags.map((tag) => formatGoal(tag)).join(", ")}
               </p>
               <p className="meta-copy">
-                <strong>Organization:</strong> {resource.organization}
+                <strong>From:</strong> {resource.organization}
               </p>
             </div>
 
@@ -195,7 +195,7 @@ export default async function ResourceDetailPage({
                   query: { collection: resource.collectionName },
                 }}
               >
-                More in this collection
+                More support like this
               </Link>
               {currentUser ? (
                 <SaveResourceForm
@@ -212,16 +212,16 @@ export default async function ResourceDetailPage({
             <ul className="bullet-list bullet-list--wide">
               <li>Check the audience and age focus before spending time on the full site.</li>
               <li>Look for waitlist, enrollment, county, or insurance details on the official page.</li>
-              <li>Use the community page if you want lived-experience advice before taking the next step.</li>
+              <li>Visit the community page if you want real-life advice before you decide.</li>
             </ul>
           </div>
         </div>
 
         <div className="section-panel section-panel--accent">
           <SectionHeading
-            eyebrow="Related discussions"
-            title="Community conversations connected to this topic."
-            intro="Support is often easier to use when practical links and lived experience can sit side by side."
+            eyebrow="Community wisdom"
+            title="Conversations that can add lived experience."
+            intro="Support often feels easier to use when practical links and real stories can sit side by side."
           />
 
           {relatedPosts.length > 0 ? (
@@ -244,15 +244,15 @@ export default async function ResourceDetailPage({
           ) : (
             <div className="empty-state">
               <p>
-                No related discussions have been posted yet. This could be a
-                good place to ask how other families or self-advocates used it.
+                No one has posted about this yet. This would be a good place to
+                ask how other families or self-advocates have used it.
               </p>
             </div>
           )}
 
           <div style={{ marginTop: "1rem" }}>
             <Link className="button-primary" href="/community">
-              Go to community
+              Ask the community
             </Link>
           </div>
         </div>
@@ -280,7 +280,7 @@ export default async function ResourceDetailPage({
           <div className="card-grid card-grid--two">
             <Link className="feature-card" href="/resources">
               <h3>Browse more resources</h3>
-              <p>Return to the directory and compare more support options.</p>
+              <p>Go back to the support library and compare more options.</p>
             </Link>
 
             <Link className="feature-card" href="/community">

@@ -8,6 +8,7 @@ import { StatusBanner } from "@/components/status-banner";
 import { getCurrentUser } from "@/lib/auth";
 import { getStats, listCommunityPosts, listEvents, listResources } from "@/lib/data";
 import { formatMonthDay } from "@/lib/formatters";
+import { homeGlobalHighlights } from "@/lib/global-voices";
 import { isClerkConfigured } from "@/lib/platform";
 import { buildRecommendations } from "@/lib/recommendations";
 import { getResourceQuickStartSummaries } from "@/lib/resources";
@@ -44,7 +45,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
       <section className="hero-grid">
         <div className="hero-copy">
-          <p className="eyebrow">Autism-focused community and resource hub</p>
+          <p className="eyebrow">Autism-focused support, community, and trusted resources</p>
           <h1>Where every family, self-advocate, and support team can find direction.</h1>
           <p className="hero-lead">
             Create a profile, save the resources that matter most, and discover
@@ -62,10 +63,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                     : "/auth"
               }
             >
-              {currentUser ? "Open your dashboard" : "Create an account"}
+              {currentUser ? "Open your space" : "Create your profile"}
             </Link>
             <Link className="button-secondary" href="/resources">
-              Explore live resources
+              Browse support
             </Link>
           </div>
           <div className="pill-list" aria-label="Audience groups">
@@ -86,11 +87,11 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             </article>
             <article className="stat-card">
               <strong>{stats.usersCount}</strong>
-              <span>Members joined</span>
+              <span>Community members</span>
             </article>
             <article className="stat-card">
               <strong>{stats.savedCount}</strong>
-              <span>Resources bookmarked</span>
+              <span>Resources saved</span>
             </article>
           </div>
         </div>
@@ -123,7 +124,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               <>
                 {recommendations.resources.slice(0, 2).map((resource) => (
                   <article className="mini-card mini-card--highlight" key={resource.id}>
-                    <p className="mini-card__label">Recommended for you</p>
+                    <p className="mini-card__label">Picked for you</p>
                     <h3>{resource.title}</h3>
                     <p>{resource.reasons[0] ?? resource.summary}</p>
                   </article>
@@ -133,7 +134,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
                   return (
                     <article className="mini-card" key={event.id}>
-                      <p className="mini-card__label">Next matched event</p>
+                      <p className="mini-card__label">Upcoming event for you</p>
                       <h3>{event.title}</h3>
                       <p>
                         {month} {day} • {event.format} • {event.location}
@@ -251,9 +252,31 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
       <section className="section">
         <SectionHeading
-          eyebrow="At-Home Support"
-          intro="These quick starts bring together the kinds of supports families often end up searching for across multiple tabs."
-          title="Play, learn, prepare, and handle practical next steps in one place."
+          eyebrow="Global voices"
+          intro="Families across the world use different words, but many of the hopes sound familiar: belonging, dignity, support, and being seen sooner and more fully."
+          title="See how the spectrum is talked about beyond one place."
+        />
+        <div className="card-grid card-grid--three">
+          {homeGlobalHighlights.map((highlight) => (
+            <article className="feature-card" key={highlight.title}>
+              <p className="feature-label">{highlight.label}</p>
+              <h3>{highlight.title}</h3>
+              <p>{highlight.description}</p>
+            </article>
+          ))}
+        </div>
+        <div className="button-row">
+          <Link className="button-secondary" href="/global-voices">
+            Explore global voices
+          </Link>
+        </div>
+      </section>
+
+      <section className="section">
+        <SectionHeading
+          eyebrow="Helpful places to start"
+          intro="These starting points bring together the kinds of support families often end up searching for across multiple tabs."
+          title="Open the kind of help your family needs today."
         />
         <div className="card-grid card-grid--five">
           {digitalQuickStarts.map((quickStart) => (
@@ -278,8 +301,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <section className="section">
         <SectionHeading
           eyebrow="Built for every stage"
-          intro="The product is organized around real-life transitions so support stays relevant from first questions through adulthood."
-          title="One platform, different paths for different seasons."
+          intro="Support is grouped around real-life transitions so it stays relevant from first questions through adulthood."
+          title="Support for every season of life."
         />
         <div className="card-grid card-grid--five">
           {ageTracks.map((track) => (
@@ -299,9 +322,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
       <section className="section">
         <SectionHeading
-          eyebrow="What you can do here"
-          intro="Each part of Guiding Light is designed to make the next step feel clearer, calmer, and easier to act on."
-          title="Support tools built for everyday life."
+          eyebrow="How Guiding Light helps"
+          intro="Every part of Guiding Light is meant to make support feel clearer, calmer, and easier to act on."
+          title="Helpful support for everyday life."
         />
         <div className="card-grid card-grid--three">
           {featureCards.map((feature) => (
@@ -317,9 +340,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <section className="section split-layout">
         <div className="section-panel">
           <SectionHeading
-            eyebrow="Community preview"
+            eyebrow="Community voices"
             intro="Browse real conversations, find reassurance, and join in when you are ready."
-            title="Helpful conversations that keep growing."
+            title="Conversations that meet you where you are."
           />
           <div className="stack-list">
             {posts.map((thread) => (
@@ -345,9 +368,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
         <div className="section-panel section-panel--accent">
           <SectionHeading
-            eyebrow="Professional access"
-            intro="Families can hear from trusted professionals without losing the warmth and honesty of peer support."
-            title="A directory that respects both expertise and lived experience."
+            eyebrow="Trusted professionals"
+            intro="Families can hear from trusted professionals while keeping the warmth and honesty of peer support close by."
+            title="Professional guidance alongside lived experience."
           />
           <div className="card-grid card-grid--two">
             {professionalRoles.slice(0, 2).map((role) => (
@@ -359,22 +382,22 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             ))}
           </div>
           <Link className="text-link" href="/professionals">
-            Explore the verified network
+            Meet trusted professionals
           </Link>
         </div>
       </section>
 
       <section className="cta-banner">
         <div>
-          <p className="eyebrow">Next best step</p>
+          <p className="eyebrow">When you&apos;re ready</p>
           <h2>
             {currentUser
-              ? "Keep building a support space that fits your needs."
-              : "Create a profile to save what matters and return with ease."}
+              ? "Keep shaping a support space that fits your needs."
+              : "Create a profile so the support you need is easier to return to."}
           </h2>
           <p>
             Keep your priorities, saved resources, and helpful conversations in
-            one place so the next visit feels easier than the last.
+            one place so each visit feels a little easier than the last.
           </p>
         </div>
         <div className="button-row">
@@ -388,10 +411,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   : "/auth"
             }
           >
-            {currentUser ? "Go to dashboard" : "Get started"}
+            {currentUser ? "Go to your space" : "Get started"}
           </Link>
           <Link className="button-secondary" href="/community">
-            See live discussions
+            See community conversations
           </Link>
         </div>
       </section>
