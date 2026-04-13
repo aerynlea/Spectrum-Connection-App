@@ -79,9 +79,10 @@ export default async function ResourcesPage({
         <p className="eyebrow">Resource Directory</p>
         <h1>Real resources for support at home, in community, and online.</h1>
         <p className="hero-lead">
-          Browse verified resources for therapies, caregiver applications,
-          PBS videos, learning links, and spectrum-friendly digital spaces in
-          one place that feels easier to return to.
+          Browse verified resources for therapies, haircut and grooming
+          support, caregiver applications, PBS videos, learning links, and
+          spectrum-friendly digital spaces in one place that feels easier to
+          return to.
         </p>
       </section>
 
