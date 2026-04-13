@@ -6,6 +6,7 @@ import { StatusBanner } from "@/components/status-banner";
 import { getCurrentUser } from "@/lib/auth";
 import { listEvents, listResources } from "@/lib/data";
 import { formatDateTime, formatMonthDay } from "@/lib/formatters";
+import { partitionByLocation } from "@/lib/location";
 import { buildRecommendations } from "@/lib/recommendations";
 import { getQueryMessage, type PageSearchParams } from "@/lib/search-params";
 
@@ -22,6 +23,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
   const recommendations = currentUser
     ? buildRecommendations(currentUser, await listResources(currentUser.id), events)
     : null;
+  const eventSections = partitionByLocation(events, currentUser?.location);
 
   return (
     <div className="page">
@@ -29,9 +31,8 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
         <p className="eyebrow">Events and Workshops</p>
         <h1>Bring support into the real world with workshops, meetups, and inclusive gatherings.</h1>
         <p className="hero-lead">
-          Event listings are now coming from the app database, and signed-in
-          users get a simple fit score based on the same profile signals that
-          shape their resource recommendations.
+          Find workshops, gatherings, and virtual sessions that turn helpful
+          information into real connection, encouragement, and follow-through.
         </p>
       </section>
 
@@ -42,7 +43,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
           <div className="section-panel section-panel--accent">
             <SectionHeading
               eyebrow="Best fits"
-              intro="These are the strongest event matches for your current profile."
+              intro="These events line up especially well with your interests and stage of life."
               title="Recommended events."
             />
             <div className="stack-list">
@@ -57,10 +58,16 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
                     </div>
                     <div className="event-card__body">
                       <p className="feature-label">
-                        Fit score {event.fitScore ?? 0} • {event.format}
+                        Recommended • {event.format}
                       </p>
                       <h3>{event.title}</h3>
                       <p>{event.detail}</p>
+                      <p className="event-meta">
+                        {formatDateTime(event.eventDate)} • {event.location}
+                      </p>
+                      <Link className="text-link" href={event.href} rel="noreferrer" target="_blank">
+                        View event details
+                      </Link>
                     </div>
                   </article>
                 );
@@ -75,8 +82,8 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
               title="Support becomes more powerful when people can show up together."
             />
             <p className="panel-copy">
-              Events are one of the easiest ways to connect resources,
-              professionals, and community support in a single flow.
+              Showing up together can turn information into reassurance,
+              routine, and a stronger sense of belonging.
             </p>
             <Link className="button-secondary" href="/community">
               Continue into community
@@ -85,14 +92,57 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
         </section>
       ) : null}
 
+      {currentUser && eventSections.nearby.length > 0 ? (
+        <section className="section">
+          <SectionHeading
+            eyebrow="Near you"
+            intro={`These official listings are the closest match for ${currentUser.location}.`}
+            title="Regional events worth watching."
+          />
+          <div className="stack-list">
+            {eventSections.nearby.map((event) => {
+              const { month, day } = formatMonthDay(event.eventDate);
+
+              return (
+                <article className="event-card event-card--full" key={event.id}>
+                  <div className="event-date">
+                    <span>{month}</span>
+                    <strong>{day}</strong>
+                  </div>
+                  <div className="event-card__body">
+                    <p className="feature-label">
+                      Near {currentUser.location} • {event.format}
+                    </p>
+                    <h3>{event.title}</h3>
+                    <p>{event.detail}</p>
+                    <p className="event-meta">
+                      {formatDateTime(event.eventDate)} • {event.location} • Hosted by{" "}
+                      {event.hostName}
+                    </p>
+                    <Link
+                      className="text-link"
+                      href={event.href}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      Open official event page
+                    </Link>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
       <section className="section">
         <SectionHeading
-          eyebrow="Upcoming listings"
-          intro="Every listing below is stored in the app data layer so future scheduling, bookmarks, and reminders can build on real records."
-          title="Events tailored to different age groups and roles."
+          eyebrow="National and virtual listings"
+          intro="Browse broader opportunities for connection, learning, and practical support."
+          title="Official events you can click into right away."
         />
         <div className="stack-list">
-          {events.map((event) => {
+          {(currentUser ? eventSections.broader : events).map((event) => {
             const { month, day } = formatMonthDay(event.eventDate);
 
             return (
@@ -111,6 +161,9 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
                     {formatDateTime(event.eventDate)} • {event.location} • Hosted by{" "}
                     {event.hostName}
                   </p>
+                  <Link className="text-link" href={event.href} rel="noreferrer" target="_blank">
+                    Open official event page
+                  </Link>
                 </div>
               </article>
             );

@@ -43,9 +43,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           <p className="eyebrow">Autism-focused community and resource hub</p>
           <h1>Where every family, self-advocate, and support team can find direction.</h1>
           <p className="hero-lead">
-            Guiding Light now includes working account flows, saved resources,
-            community posting, and profile-based recommendations so support can
-            begin to feel personal instead of generic.
+            Create a profile, save the resources that matter most, and discover
+            support that feels more relevant to your stage of life, goals, and
+            day-to-day needs.
           </p>
           <div className="button-row">
             <Link
@@ -74,19 +74,19 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           <div className="stats-grid">
             <article className="stat-card">
               <strong>{stats.resourcesCount}</strong>
-              <span>Seeded resources</span>
+              <span>Helpful resources</span>
             </article>
             <article className="stat-card">
               <strong>{stats.postsCount}</strong>
-              <span>Community threads</span>
+              <span>Community conversations</span>
             </article>
             <article className="stat-card">
               <strong>{stats.usersCount}</strong>
-              <span>Registered members</span>
+              <span>Members joined</span>
             </article>
             <article className="stat-card">
               <strong>{stats.savedCount}</strong>
-              <span>Resources saved</span>
+              <span>Resources bookmarked</span>
             </article>
           </div>
         </div>
@@ -99,8 +99,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               </p>
               <h2>
                 {currentUser
-                  ? "Your profile now shapes what the platform shows first."
-                  : "Support + empowerment, designed as a daily companion."}
+                  ? "Your space is ready with support that fits your priorities."
+                  : "A calm place to connect, explore, and feel supported."}
               </h2>
             </div>
             <div className="hero-mark">
@@ -141,27 +141,27 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             ) : (
               <>
                 <article className="mini-card">
-                  <p className="mini-card__label">Personalized pathways</p>
-                  <h3>Age, goals, and location shape what users see first.</h3>
+                  <p className="mini-card__label">Support made personal</p>
+                  <h3>Start with what matters most to you.</h3>
                   <p>
-                    Sign in to save resources, tailor your profile, and get
-                    recommendations matched to your stage and support goals.
+                    Create a profile to save resources and surface options that
+                    fit your stage of life, location, and current goals.
                   </p>
                 </article>
                 <article className="mini-card">
-                  <p className="mini-card__label">Live support circle</p>
-                  <h3>Community conversations stay practical and encouraging.</h3>
+                  <p className="mini-card__label">Community conversations</p>
+                  <h3>Questions, wins, and honest advice all have a place here.</h3>
                   <p>
-                    Topic-based groups help members ask questions, share wins,
-                    and learn from people who understand the day-to-day reality.
+                    Topic-based groups help members ask for support, celebrate
+                    progress, and learn from people who understand real life.
                   </p>
                 </article>
                 <article className="mini-card mini-card--highlight">
-                  <p className="mini-card__label">Verified guidance</p>
-                  <h3>Professionals can add credible input without replacing lived experience.</h3>
+                  <p className="mini-card__label">Trusted guidance</p>
+                  <h3>Professional insight sits alongside lived experience.</h3>
                   <p>
-                    Therapists, educators, and advocates share workshops,
-                    answers, and curated resources alongside peer voices.
+                    Therapists, educators, and advocates can share workshops,
+                    answers, and resources while community voices stay central.
                   </p>
                 </article>
               </>
@@ -194,9 +194,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
       <section className="section">
         <SectionHeading
-          eyebrow="What is working now"
-          intro="This first functional slice moves the project beyond static concept pages into a usable experience."
-          title="The MVP now supports core day-to-day product flows."
+          eyebrow="What you can do here"
+          intro="Each part of Guiding Light is designed to make the next step feel clearer, calmer, and easier to act on."
+          title="Support tools built for everyday life."
         />
         <div className="card-grid card-grid--three">
           {featureCards.map((feature) => (
@@ -213,7 +213,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         <div className="section-panel">
           <SectionHeading
             eyebrow="Community preview"
-            intro="The community feed is now backed by stored threads, and signed-in users can post directly from the app."
+            intro="Browse real conversations, find reassurance, and join in when you are ready."
             title="Helpful conversations that keep growing."
           />
           <div className="stack-list">
@@ -241,7 +241,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         <div className="section-panel section-panel--accent">
           <SectionHeading
             eyebrow="Professional access"
-            intro="Verified professionals remain distinct from peer voices while still contributing trusted guidance and local opportunities."
+            intro="Families can hear from trusted professionals without losing the warmth and honesty of peer support."
             title="A directory that respects both expertise and lived experience."
           />
           <div className="card-grid card-grid--two">
@@ -264,13 +264,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           <p className="eyebrow">Next best step</p>
           <h2>
             {currentUser
-              ? "Keep shaping your recommendations from the dashboard."
-              : "Create a profile to unlock saved resources and tailored support."}
+              ? "Keep building a support space that fits your needs."
+              : "Create a profile to save what matters and return with ease."}
           </h2>
           <p>
-            The app now persists profiles, bookmarks, and community posts
-            through a deployment-ready data layer with local fallback and
-            hosted-mode support for Neon and Clerk.
+            Keep your priorities, saved resources, and helpful conversations in
+            one place so the next visit feels easier than the last.
           </p>
         </div>
         <div className="button-row">

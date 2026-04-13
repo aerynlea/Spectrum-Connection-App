@@ -46,6 +46,7 @@ type ResourceRow = {
   verified: number;
   organization: string;
   href: string;
+  region_tags: string;
   saved_count?: number;
   is_saved?: number;
 };
@@ -71,6 +72,8 @@ type EventRow = {
   event_date: string;
   host_name: string;
   location: string;
+  href: string;
+  region_tags: string;
 };
 
 type ProfessionalRow = {
@@ -83,6 +86,18 @@ type ProfessionalRow = {
   summary: string;
   accepting_new_families: number;
   verified: number;
+  href: string;
+  region_tags: string;
+};
+
+type CommunityReplyRow = {
+  id: string;
+  post_id: string;
+  user_id: string | null;
+  author_name: string;
+  author_role: string;
+  body: string;
+  created_at: string;
 };
 
 type SessionRow = {
@@ -121,13 +136,22 @@ export type ProfileUpdateInput = {
 
 const dataDirectory = join(process.cwd(), "data");
 const databasePath = join(dataDirectory, "guiding-light.db");
+const schemaVersion = "2026-04-real-connections";
 
 const globalForDatabase = globalThis as typeof globalThis & {
   guidingLightDb?: DatabaseSync;
+  guidingLightDbSchemaVersion?: string;
 };
 
 function getDatabase() {
   if (globalForDatabase.guidingLightDb) {
+    if (globalForDatabase.guidingLightDbSchemaVersion !== schemaVersion) {
+      ensureUserColumns(globalForDatabase.guidingLightDb);
+      ensureContentColumns(globalForDatabase.guidingLightDb);
+      seedDatabase(globalForDatabase.guidingLightDb);
+      globalForDatabase.guidingLightDbSchemaVersion = schemaVersion;
+    }
+
     return globalForDatabase.guidingLightDb;
   }
 
@@ -175,7 +199,8 @@ function getDatabase() {
       location_scope TEXT NOT NULL,
       verified INTEGER NOT NULL DEFAULT 0,
       organization TEXT NOT NULL,
-      href TEXT NOT NULL
+      href TEXT NOT NULL,
+      region_tags TEXT NOT NULL DEFAULT '[]'
     );
 
     CREATE TABLE IF NOT EXISTS events (
@@ -186,7 +211,9 @@ function getDatabase() {
       format TEXT NOT NULL,
       event_date TEXT NOT NULL,
       host_name TEXT NOT NULL,
-      location TEXT NOT NULL
+      location TEXT NOT NULL,
+      href TEXT NOT NULL DEFAULT '',
+      region_tags TEXT NOT NULL DEFAULT '[]'
     );
 
     CREATE TABLE IF NOT EXISTS community_posts (
@@ -220,15 +247,31 @@ function getDatabase() {
       location TEXT NOT NULL,
       summary TEXT NOT NULL,
       accepting_new_families INTEGER NOT NULL DEFAULT 0,
-      verified INTEGER NOT NULL DEFAULT 0
+      verified INTEGER NOT NULL DEFAULT 0,
+      href TEXT NOT NULL DEFAULT '',
+      region_tags TEXT NOT NULL DEFAULT '[]'
+    );
+
+    CREATE TABLE IF NOT EXISTS community_replies (
+      id TEXT PRIMARY KEY,
+      post_id TEXT NOT NULL,
+      user_id TEXT,
+      author_name TEXT NOT NULL,
+      author_role TEXT NOT NULL,
+      body TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (post_id) REFERENCES community_posts(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
     );
   `);
 
   ensureUserColumns(db);
+  ensureContentColumns(db);
 
   seedDatabase(db);
 
   globalForDatabase.guidingLightDb = db;
+  globalForDatabase.guidingLightDbSchemaVersion = schemaVersion;
   return db;
 }
 
@@ -258,8 +301,73 @@ function ensureUserColumns(database: DatabaseSync) {
   `);
 }
 
-function parseJson<T>(value: string): T {
-  return JSON.parse(value) as T;
+function ensureColumn(
+  database: DatabaseSync,
+  tableName: string,
+  columnName: string,
+  definition: string,
+) {
+  const columns = database
+    .prepare(`PRAGMA table_info(${tableName})`)
+    .all() as Array<{ name: string }>;
+
+  if (!columns.some((column) => column.name === columnName)) {
+    database.exec(`ALTER TABLE ${tableName} ADD COLUMN ${definition}`);
+  }
+}
+
+function ensureContentColumns(database: DatabaseSync) {
+  ensureColumn(
+    database,
+    "resources",
+    "region_tags",
+    "region_tags TEXT NOT NULL DEFAULT '[]'",
+  );
+  ensureColumn(database, "events", "href", "href TEXT NOT NULL DEFAULT ''");
+  ensureColumn(
+    database,
+    "events",
+    "region_tags",
+    "region_tags TEXT NOT NULL DEFAULT '[]'",
+  );
+  ensureColumn(
+    database,
+    "professionals",
+    "href",
+    "href TEXT NOT NULL DEFAULT ''",
+  );
+  ensureColumn(
+    database,
+    "professionals",
+    "region_tags",
+    "region_tags TEXT NOT NULL DEFAULT '[]'",
+  );
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS community_replies (
+      id TEXT PRIMARY KEY,
+      post_id TEXT NOT NULL,
+      user_id TEXT,
+      author_name TEXT NOT NULL,
+      author_role TEXT NOT NULL,
+      body TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (post_id) REFERENCES community_posts(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    )
+  `);
+}
+
+function parseJson<T>(value: string | null | undefined, fallback: T): T {
+  if (!value) {
+    return fallback;
+  }
+
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
 }
 
 function toUser(row: UserRow): AppUser {
@@ -270,7 +378,7 @@ function toUser(row: UserRow): AppUser {
     role: row.role,
     ageGroup: row.age_group,
     location: row.location,
-    goals: parseJson<GoalKey[]>(row.goals),
+    goals: parseJson<GoalKey[]>(row.goals, []),
     verified: Boolean(row.verified),
     createdAt: row.created_at,
   };
@@ -285,11 +393,12 @@ function toResource(row: ResourceRow): ResourceRecord {
     category: row.category,
     audience: row.audience,
     ageGroup: row.age_group,
-    tags: parseJson<GoalKey[]>(row.tags),
+    tags: parseJson<GoalKey[]>(row.tags, []),
     locationScope: row.location_scope,
     verified: Boolean(row.verified),
     organization: row.organization,
     href: row.href,
+    regionTags: parseJson<string[]>(row.region_tags, []),
     savedCount: row.saved_count ?? 0,
     isSaved: Boolean(row.is_saved ?? 0),
   };
@@ -305,6 +414,8 @@ function toEvent(row: EventRow): EventRecord {
     eventDate: row.event_date,
     hostName: row.host_name,
     location: row.location,
+    href: row.href,
+    regionTags: parseJson<string[]>(row.region_tags, []),
   };
 }
 
@@ -333,148 +444,183 @@ function toProfessional(row: ProfessionalRow): ProfessionalRecord {
     summary: row.summary,
     acceptingNewFamilies: Boolean(row.accepting_new_families),
     verified: Boolean(row.verified),
+    href: row.href,
+    regionTags: parseJson<string[]>(row.region_tags, []),
+  };
+}
+
+function toCommunityReply(row: CommunityReplyRow) {
+  return {
+    id: row.id,
+    postId: row.post_id,
+    userId: row.user_id,
+    authorName: row.author_name,
+    authorRole: row.author_role,
+    body: row.body,
+    createdAt: row.created_at,
   };
 }
 
 function seedDatabase(database: DatabaseSync) {
-  const resourceCountRow = database
-    .prepare("SELECT COUNT(*) as count FROM resources")
-    .get() as { count: number };
+  const upsertResource = database.prepare(`
+    INSERT INTO resources (
+      id,
+      title,
+      summary,
+      collection_name,
+      category,
+      audience,
+      age_group,
+      tags,
+      location_scope,
+      verified,
+      organization,
+      href,
+      region_tags
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      title = excluded.title,
+      summary = excluded.summary,
+      collection_name = excluded.collection_name,
+      category = excluded.category,
+      audience = excluded.audience,
+      age_group = excluded.age_group,
+      tags = excluded.tags,
+      location_scope = excluded.location_scope,
+      verified = excluded.verified,
+      organization = excluded.organization,
+      href = excluded.href,
+      region_tags = excluded.region_tags
+  `);
 
-  if (resourceCountRow.count === 0) {
-    const insertResource = database.prepare(`
-      INSERT INTO resources (
-        id,
-        title,
-        summary,
-        collection_name,
-        category,
-        audience,
-        age_group,
-        tags,
-        location_scope,
-        verified,
-        organization,
-        href
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    for (const resource of resourceSeeds) {
-      insertResource.run(
-        resource.id,
-        resource.title,
-        resource.summary,
-        resource.collectionName,
-        resource.category,
-        resource.audience,
-        resource.ageGroup,
-        JSON.stringify(resource.tags),
-        resource.locationScope,
-        resource.verified ? 1 : 0,
-        resource.organization,
-        resource.href,
-      );
-    }
+  for (const resource of resourceSeeds) {
+    upsertResource.run(
+      resource.id,
+      resource.title,
+      resource.summary,
+      resource.collectionName,
+      resource.category,
+      resource.audience,
+      resource.ageGroup,
+      JSON.stringify(resource.tags),
+      resource.locationScope,
+      resource.verified ? 1 : 0,
+      resource.organization,
+      resource.href,
+      JSON.stringify(resource.regionTags),
+    );
   }
 
-  const eventCountRow = database
-    .prepare("SELECT COUNT(*) as count FROM events")
-    .get() as { count: number };
+  const upsertEvent = database.prepare(`
+    INSERT INTO events (
+      id,
+      title,
+      detail,
+      audience,
+      format,
+      event_date,
+      host_name,
+      location,
+      href,
+      region_tags
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      title = excluded.title,
+      detail = excluded.detail,
+      audience = excluded.audience,
+      format = excluded.format,
+      event_date = excluded.event_date,
+      host_name = excluded.host_name,
+      location = excluded.location,
+      href = excluded.href,
+      region_tags = excluded.region_tags
+  `);
 
-  if (eventCountRow.count === 0) {
-    const insertEvent = database.prepare(`
-      INSERT INTO events (
-        id,
-        title,
-        detail,
-        audience,
-        format,
-        event_date,
-        host_name,
-        location
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    for (const event of eventSeeds) {
-      insertEvent.run(
-        event.id,
-        event.title,
-        event.detail,
-        event.audience,
-        event.format,
-        event.eventDate,
-        event.hostName,
-        event.location,
-      );
-    }
+  for (const event of eventSeeds) {
+    upsertEvent.run(
+      event.id,
+      event.title,
+      event.detail,
+      event.audience,
+      event.format,
+      event.eventDate,
+      event.hostName,
+      event.location,
+      event.href,
+      JSON.stringify(event.regionTags),
+    );
   }
 
-  const professionalCountRow = database
-    .prepare("SELECT COUNT(*) as count FROM professionals")
-    .get() as { count: number };
+  const upsertProfessional = database.prepare(`
+    INSERT INTO professionals (
+      id,
+      name,
+      title,
+      focus,
+      organization,
+      location,
+      summary,
+      accepting_new_families,
+      verified,
+      href,
+      region_tags
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      name = excluded.name,
+      title = excluded.title,
+      focus = excluded.focus,
+      organization = excluded.organization,
+      location = excluded.location,
+      summary = excluded.summary,
+      accepting_new_families = excluded.accepting_new_families,
+      verified = excluded.verified,
+      href = excluded.href,
+      region_tags = excluded.region_tags
+  `);
 
-  if (professionalCountRow.count === 0) {
-    const insertProfessional = database.prepare(`
-      INSERT INTO professionals (
-        id,
-        name,
-        title,
-        focus,
-        organization,
-        location,
-        summary,
-        accepting_new_families,
-        verified
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    for (const professional of professionalSeeds) {
-      insertProfessional.run(
-        professional.id,
-        professional.name,
-        professional.title,
-        professional.focus,
-        professional.organization,
-        professional.location,
-        professional.summary,
-        professional.acceptingNewFamilies ? 1 : 0,
-        professional.verified ? 1 : 0,
-      );
-    }
+  for (const professional of professionalSeeds) {
+    upsertProfessional.run(
+      professional.id,
+      professional.name,
+      professional.title,
+      professional.focus,
+      professional.organization,
+      professional.location,
+      professional.summary,
+      professional.acceptingNewFamilies ? 1 : 0,
+      professional.verified ? 1 : 0,
+      professional.href,
+      JSON.stringify(professional.regionTags),
+    );
   }
 
-  const postCountRow = database
-    .prepare("SELECT COUNT(*) as count FROM community_posts")
-    .get() as { count: number };
+  const insertPost = database.prepare(`
+    INSERT INTO community_posts (
+      id,
+      user_id,
+      author_name,
+      author_role,
+      topic,
+      tag,
+      title,
+      body,
+      created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO NOTHING
+  `);
 
-  if (postCountRow.count === 0) {
-    const insertPost = database.prepare(`
-      INSERT INTO community_posts (
-        id,
-        user_id,
-        author_name,
-        author_role,
-        topic,
-        tag,
-        title,
-        body,
-        created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    for (const post of communityPostSeeds) {
-      insertPost.run(
-        post.id,
-        null,
-        post.authorName,
-        post.authorRole,
-        post.topic,
-        post.tag,
-        post.title,
-        post.body,
-        post.createdAt,
-      );
-    }
+  for (const post of communityPostSeeds) {
+    insertPost.run(
+      post.id,
+      null,
+      post.authorName,
+      post.authorRole,
+      post.topic,
+      post.tag,
+      post.title,
+      post.body,
+      post.createdAt,
+    );
   }
 }
 
@@ -721,7 +867,7 @@ export function toggleSavedResource(userId: string, resourceId: string) {
 export function listEvents() {
   const rows = database()
     .prepare(
-      "SELECT id, title, detail, audience, format, event_date, host_name, location FROM events ORDER BY event_date ASC",
+      "SELECT id, title, detail, audience, format, event_date, host_name, location, href, region_tags FROM events ORDER BY event_date ASC",
     )
     .all() as EventRow[];
 
@@ -748,6 +894,25 @@ export function listCommunityPosts(limit = 20) {
     .all(limit) as CommunityRow[];
 
   return rows.map(toCommunityPost);
+}
+
+export function listCommunityReplies() {
+  const rows = database()
+    .prepare(`
+      SELECT
+        id,
+        post_id,
+        user_id,
+        author_name,
+        author_role,
+        body,
+        created_at
+      FROM community_replies
+      ORDER BY created_at ASC
+    `)
+    .all() as CommunityReplyRow[];
+
+  return rows.map(toCommunityReply);
 }
 
 export function createCommunityPost(input: {
@@ -784,6 +949,34 @@ export function createCommunityPost(input: {
   );
 }
 
+export function createCommunityReply(input: {
+  postId: string;
+  userId: string;
+  authorName: string;
+  authorRole: string;
+  body: string;
+}) {
+  database().prepare(`
+    INSERT INTO community_replies (
+      id,
+      post_id,
+      user_id,
+      author_name,
+      author_role,
+      body,
+      created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    randomUUID(),
+    input.postId,
+    input.userId,
+    input.authorName,
+    input.authorRole,
+    input.body,
+    new Date().toISOString(),
+  );
+}
+
 export function listProfessionals() {
   const rows = database()
     .prepare(`
@@ -796,7 +989,9 @@ export function listProfessionals() {
         location,
         summary,
         accepting_new_families,
-        verified
+        verified,
+        href,
+        region_tags
       FROM professionals
       ORDER BY verified DESC, accepting_new_families DESC, name ASC
     `)

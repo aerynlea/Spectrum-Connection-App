@@ -5,6 +5,7 @@ import { SectionHeading } from "@/components/section-heading";
 import { StatusBanner } from "@/components/status-banner";
 import { getCurrentUser } from "@/lib/auth";
 import { listProfessionals } from "@/lib/data";
+import { partitionByLocation } from "@/lib/location";
 import { isClerkConfigured } from "@/lib/platform";
 import { getQueryMessage, type PageSearchParams } from "@/lib/search-params";
 import { verificationSteps } from "@/lib/site-data";
@@ -21,6 +22,11 @@ export default async function ProfessionalsPage({
   const currentUser = await getCurrentUser();
   const message = await getQueryMessage(searchParams, "message");
   const professionals = await listProfessionals();
+  const providerSections = partitionByLocation(professionals, currentUser?.location);
+  const featuredProfessionals =
+    currentUser && providerSections.nearby.length > 0
+      ? providerSections.nearby
+      : professionals;
 
   return (
     <div className="page">
@@ -28,9 +34,8 @@ export default async function ProfessionalsPage({
         <p className="eyebrow">Verified Professionals</p>
         <h1>Trusted experts can participate in ways that strengthen the whole community.</h1>
         <p className="hero-lead">
-          The verified network is now backed by stored provider records, giving
-          the app a real foundation for future discovery, filters, and local
-          outreach partnerships.
+          Families can discover trusted providers, understand how they help,
+          and decide who may be a good fit for their needs.
         </p>
         {!currentUser ? (
           <div className="button-row">
@@ -50,11 +55,11 @@ export default async function ProfessionalsPage({
         <div className="section-panel">
           <SectionHeading
             eyebrow="Directory"
-            intro="These sample provider records are persisted in the same app data layer as the rest of Guiding Light."
+            intro="Meet professionals who support communication, regulation, learning, and everyday life."
             title="Verified voices in the network."
           />
           <div className="stack-list">
-            {professionals.map((professional) => (
+            {featuredProfessionals.map((professional) => (
               <article className="thread-card" key={professional.id}>
                 <div className="thread-card__meta">
                   <div>
@@ -72,6 +77,14 @@ export default async function ProfessionalsPage({
                 <h4>{professional.focus}</h4>
                 <p>{professional.summary}</p>
                 <p className="meta-copy">{professional.location}</p>
+                <Link
+                  className="text-link"
+                  href={professional.href}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  Visit organization
+                </Link>
               </article>
             ))}
           </div>
@@ -80,8 +93,8 @@ export default async function ProfessionalsPage({
         <div className="section-panel section-panel--accent">
           <SectionHeading
             eyebrow="Verification flow"
-            intro="A clear process helps families trust who they are hearing from and helps professionals represent themselves responsibly."
-            title="Badges should mean something concrete."
+            intro="Families deserve clarity about who they are hearing from and why that voice can be trusted."
+            title="How Guiding Light builds trust."
           />
           <div className="support-steps">
             {verificationSteps.map((step, index) => (
@@ -95,6 +108,33 @@ export default async function ProfessionalsPage({
           </div>
         </div>
       </section>
+
+      {currentUser && providerSections.broader.length > 0 ? (
+        <section className="section">
+          <SectionHeading
+            eyebrow="Broader support"
+            intro="These trusted organizations can still help even if they are not closest to your area."
+            title="National and statewide options."
+          />
+          <div className="stack-list">
+            {providerSections.broader.map((professional) => (
+              <article className="sub-card" key={professional.id}>
+                <h3>{professional.name}</h3>
+                <p>{professional.summary}</p>
+                <p className="meta-copy">{professional.location}</p>
+                <Link
+                  className="text-link"
+                  href={professional.href}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  Open provider page
+                </Link>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

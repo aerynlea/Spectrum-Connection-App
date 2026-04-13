@@ -13,6 +13,7 @@ import type {
   AppUser,
   AuthProvider,
   CommunityPostRecord,
+  CommunityReplyRecord,
   EventRecord,
   GoalKey,
   ProfessionalRecord,
@@ -51,8 +52,46 @@ type ResourceRow = {
   verified: boolean;
   organization: string;
   href: string;
+  region_tags: string;
   saved_count: string | number;
   is_saved: boolean;
+};
+
+type EventRow = {
+  id: string;
+  title: string;
+  detail: string;
+  audience: string;
+  format: string;
+  eventDate: string;
+  hostName: string;
+  location: string;
+  href: string;
+  region_tags: string;
+};
+
+type ProfessionalRow = {
+  id: string;
+  name: string;
+  title: string;
+  focus: string;
+  organization: string;
+  location: string;
+  summary: string;
+  acceptingNewFamilies: boolean;
+  verified: boolean;
+  href: string;
+  region_tags: string;
+};
+
+type CommunityReplyRow = {
+  id: string;
+  postId: string;
+  userId: string | null;
+  authorName: string;
+  authorRole: string;
+  body: string;
+  createdAt: string;
 };
 
 type StatsRow = {
@@ -97,8 +136,16 @@ function getSql() {
   return neon(databaseUrl);
 }
 
-function parseJson<T>(value: string): T {
-  return JSON.parse(value) as T;
+function parseJson<T>(value: string | null | undefined, fallback: T): T {
+  if (!value) {
+    return fallback;
+  }
+
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
 }
 
 function toUser(row: UserRow): AppUser {
@@ -109,7 +156,7 @@ function toUser(row: UserRow): AppUser {
     role: row.role,
     ageGroup: row.age_group,
     location: row.location,
-    goals: parseJson<GoalKey[]>(row.goals),
+    goals: parseJson<GoalKey[]>(row.goals, []),
     verified: Boolean(row.verified),
     createdAt: row.created_at,
   };
@@ -128,13 +175,57 @@ function toResource(row: ResourceRow): ResourceRecord {
     category: row.category,
     audience: row.audience,
     ageGroup: row.age_group,
-    tags: parseJson<GoalKey[]>(row.tags),
+    tags: parseJson<GoalKey[]>(row.tags, []),
     locationScope: row.location_scope,
     verified: Boolean(row.verified),
     organization: row.organization,
     href: row.href,
+    regionTags: parseJson<string[]>(row.region_tags, []),
     savedCount: toNumber(row.saved_count),
     isSaved: Boolean(row.is_saved),
+  };
+}
+
+function toEvent(row: EventRow): EventRecord {
+  return {
+    id: row.id,
+    title: row.title,
+    detail: row.detail,
+    audience: row.audience,
+    format: row.format,
+    eventDate: row.eventDate,
+    hostName: row.hostName,
+    location: row.location,
+    href: row.href,
+    regionTags: parseJson<string[]>(row.region_tags, []),
+  };
+}
+
+function toProfessional(row: ProfessionalRow): ProfessionalRecord {
+  return {
+    id: row.id,
+    name: row.name,
+    title: row.title,
+    focus: row.focus,
+    organization: row.organization,
+    location: row.location,
+    summary: row.summary,
+    acceptingNewFamilies: Boolean(row.acceptingNewFamilies),
+    verified: Boolean(row.verified),
+    href: row.href,
+    regionTags: parseJson<string[]>(row.region_tags, []),
+  };
+}
+
+function toCommunityReply(row: CommunityReplyRow): CommunityReplyRecord {
+  return {
+    id: row.id,
+    postId: row.postId,
+    userId: row.userId,
+    authorName: row.authorName,
+    authorRole: row.authorRole,
+    body: row.body,
+    createdAt: row.createdAt,
   };
 }
 
@@ -186,8 +277,14 @@ async function seedHostedDatabase() {
       location_scope TEXT NOT NULL,
       verified BOOLEAN NOT NULL DEFAULT false,
       organization TEXT NOT NULL,
-      href TEXT NOT NULL
+      href TEXT NOT NULL,
+      region_tags TEXT NOT NULL DEFAULT '[]'
     )
+  `);
+
+  await sql.query(`
+    ALTER TABLE resources
+    ADD COLUMN IF NOT EXISTS region_tags TEXT NOT NULL DEFAULT '[]'
   `);
 
   await sql.query(`
@@ -199,8 +296,20 @@ async function seedHostedDatabase() {
       format TEXT NOT NULL,
       event_date TEXT NOT NULL,
       host_name TEXT NOT NULL,
-      location TEXT NOT NULL
+      location TEXT NOT NULL,
+      href TEXT NOT NULL DEFAULT '',
+      region_tags TEXT NOT NULL DEFAULT '[]'
     )
+  `);
+
+  await sql.query(`
+    ALTER TABLE events
+    ADD COLUMN IF NOT EXISTS href TEXT NOT NULL DEFAULT ''
+  `);
+
+  await sql.query(`
+    ALTER TABLE events
+    ADD COLUMN IF NOT EXISTS region_tags TEXT NOT NULL DEFAULT '[]'
   `);
 
   await sql.query(`
@@ -236,7 +345,31 @@ async function seedHostedDatabase() {
       location TEXT NOT NULL,
       summary TEXT NOT NULL,
       accepting_new_families BOOLEAN NOT NULL DEFAULT false,
-      verified BOOLEAN NOT NULL DEFAULT false
+      verified BOOLEAN NOT NULL DEFAULT false,
+      href TEXT NOT NULL DEFAULT '',
+      region_tags TEXT NOT NULL DEFAULT '[]'
+    )
+  `);
+
+  await sql.query(`
+    ALTER TABLE professionals
+    ADD COLUMN IF NOT EXISTS href TEXT NOT NULL DEFAULT ''
+  `);
+
+  await sql.query(`
+    ALTER TABLE professionals
+    ADD COLUMN IF NOT EXISTS region_tags TEXT NOT NULL DEFAULT '[]'
+  `);
+
+  await sql.query(`
+    CREATE TABLE IF NOT EXISTS community_replies (
+      id TEXT PRIMARY KEY,
+      post_id TEXT NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE,
+      user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      author_name TEXT NOT NULL,
+      author_role TEXT NOT NULL,
+      body TEXT NOT NULL,
+      created_at TEXT NOT NULL
     )
   `);
 
@@ -267,9 +400,22 @@ async function seedHostedDatabase() {
         ${resource.locationScope},
         ${resource.verified},
         ${resource.organization},
-        ${resource.href}
+        ${resource.href},
+        ${JSON.stringify(resource.regionTags)}
       )
-      ON CONFLICT (id) DO NOTHING
+      ON CONFLICT (id) DO UPDATE SET
+        title = EXCLUDED.title,
+        summary = EXCLUDED.summary,
+        collection_name = EXCLUDED.collection_name,
+        category = EXCLUDED.category,
+        audience = EXCLUDED.audience,
+        age_group = EXCLUDED.age_group,
+        tags = EXCLUDED.tags,
+        location_scope = EXCLUDED.location_scope,
+        verified = EXCLUDED.verified,
+        organization = EXCLUDED.organization,
+        href = EXCLUDED.href,
+        region_tags = EXCLUDED.region_tags
     `;
   }
 
@@ -292,9 +438,20 @@ async function seedHostedDatabase() {
         ${event.format},
         ${event.eventDate},
         ${event.hostName},
-        ${event.location}
+        ${event.location},
+        ${event.href},
+        ${JSON.stringify(event.regionTags)}
       )
-      ON CONFLICT (id) DO NOTHING
+      ON CONFLICT (id) DO UPDATE SET
+        title = EXCLUDED.title,
+        detail = EXCLUDED.detail,
+        audience = EXCLUDED.audience,
+        format = EXCLUDED.format,
+        event_date = EXCLUDED.event_date,
+        host_name = EXCLUDED.host_name,
+        location = EXCLUDED.location,
+        href = EXCLUDED.href,
+        region_tags = EXCLUDED.region_tags
     `;
   }
 
@@ -309,7 +466,9 @@ async function seedHostedDatabase() {
         location,
         summary,
         accepting_new_families,
-        verified
+        verified,
+        href,
+        region_tags
       ) VALUES (
         ${professional.id},
         ${professional.name},
@@ -319,9 +478,21 @@ async function seedHostedDatabase() {
         ${professional.location},
         ${professional.summary},
         ${professional.acceptingNewFamilies},
-        ${professional.verified}
+        ${professional.verified},
+        ${professional.href},
+        ${JSON.stringify(professional.regionTags)}
       )
-      ON CONFLICT (id) DO NOTHING
+      ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        title = EXCLUDED.title,
+        focus = EXCLUDED.focus,
+        organization = EXCLUDED.organization,
+        location = EXCLUDED.location,
+        summary = EXCLUDED.summary,
+        accepting_new_families = EXCLUDED.accepting_new_families,
+        verified = EXCLUDED.verified,
+        href = EXCLUDED.href,
+        region_tags = EXCLUDED.region_tags
     `;
   }
 
@@ -597,6 +768,7 @@ export async function listResources(userId?: string | null) {
       resources.verified,
       resources.organization,
       resources.href,
+      resources.region_tags,
       COALESCE(resource_saves.saved_count, 0) AS saved_count,
       CASE
         WHEN user_saves.resource_id IS NULL THEN false
@@ -635,6 +807,7 @@ export async function listSavedResources(userId: string) {
       resources.verified,
       resources.organization,
       resources.href,
+      resources.region_tags,
       COALESCE(resource_saves.saved_count, 0) AS saved_count,
       true AS is_saved
     FROM saved_resources
@@ -681,7 +854,7 @@ export async function listEvents() {
   await ensureHostedDatabase();
   const sql = getSql();
 
-  return (await sql`
+  const rows = (await sql`
     SELECT
       id,
       title,
@@ -690,10 +863,14 @@ export async function listEvents() {
       format,
       event_date AS "eventDate",
       host_name AS "hostName",
-      location
+      location,
+      href,
+      region_tags
     FROM events
     ORDER BY event_date ASC
-  `) as EventRecord[];
+  `) as EventRow[];
+
+  return rows.map(toEvent);
 }
 
 export async function listCommunityPosts(limit = 20) {
@@ -715,6 +892,26 @@ export async function listCommunityPosts(limit = 20) {
     ORDER BY created_at DESC
     LIMIT ${limit}
   `) as CommunityPostRecord[];
+}
+
+export async function listCommunityReplies() {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  const rows = (await sql`
+    SELECT
+      id,
+      post_id AS "postId",
+      user_id AS "userId",
+      author_name AS "authorName",
+      author_role AS "authorRole",
+      body,
+      created_at AS "createdAt"
+    FROM community_replies
+    ORDER BY created_at ASC
+  `) as CommunityReplyRow[];
+
+  return rows.map(toCommunityReply);
 }
 
 export async function createCommunityPost(input: {
@@ -754,11 +951,42 @@ export async function createCommunityPost(input: {
   `;
 }
 
+export async function createCommunityReply(input: {
+  postId: string;
+  userId: string;
+  authorName: string;
+  authorRole: string;
+  body: string;
+}) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  await sql`
+    INSERT INTO community_replies (
+      id,
+      post_id,
+      user_id,
+      author_name,
+      author_role,
+      body,
+      created_at
+    ) VALUES (
+      ${randomUUID()},
+      ${input.postId},
+      ${input.userId},
+      ${input.authorName},
+      ${input.authorRole},
+      ${input.body},
+      ${new Date().toISOString()}
+    )
+  `;
+}
+
 export async function listProfessionals() {
   await ensureHostedDatabase();
   const sql = getSql();
 
-  return (await sql`
+  const rows = (await sql`
     SELECT
       id,
       name,
@@ -768,8 +996,12 @@ export async function listProfessionals() {
       location,
       summary,
       accepting_new_families AS "acceptingNewFamilies",
-      verified
+      verified,
+      href,
+      region_tags
     FROM professionals
     ORDER BY verified DESC, accepting_new_families DESC, name ASC
-  `) as ProfessionalRecord[];
+  `) as ProfessionalRow[];
+
+  return rows.map(toProfessional);
 }

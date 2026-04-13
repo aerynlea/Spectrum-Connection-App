@@ -11,6 +11,7 @@ import {
   roleOptions,
 } from "@/lib/catalog";
 import {
+  createCommunityReply,
   createCommunityPost,
   createUser,
   getUserAuthByEmail,
@@ -26,6 +27,11 @@ const validRoles = new Set(roleOptions.map((option) => option.value));
 const validAgeGroups = new Set(ageGroupOptions.map((option) => option.value));
 const validGoals = new Set(goalOptions.map((option) => option.value));
 const validTopics = new Set(communityTopicOptions);
+
+export type ProfileActionState = {
+  status: "idle" | "success" | "error";
+  message: string | null;
+};
 
 function buildPath(pathname: string, params: Record<string, string>) {
   const search = new URLSearchParams(params);
@@ -161,7 +167,10 @@ export async function signOutAction() {
   redirect(buildPath("/", { message: "You have been signed out." }));
 }
 
-export async function updateProfileAction(formData: FormData) {
+export async function updateProfileAction(
+  _previousState: ProfileActionState,
+  formData: FormData,
+): Promise<ProfileActionState> {
   const currentUser = await requireCurrentUser();
   const name = String(formData.get("name") ?? "").trim();
   const location = String(formData.get("location") ?? "").trim();
@@ -170,11 +179,10 @@ export async function updateProfileAction(formData: FormData) {
   const goals = pickGoals(formData);
 
   if (!name || !location || !role || !ageGroup || goals.length === 0) {
-    redirect(
-      buildPath("/dashboard", {
-        error: "Please keep every profile field completed before saving.",
-      }),
-    );
+    return {
+      status: "error",
+      message: "Please keep every profile field completed before saving.",
+    };
   }
 
   await updateUserProfile(currentUser.id, {
@@ -186,7 +194,10 @@ export async function updateProfileAction(formData: FormData) {
   });
 
   revalidateAppShell();
-  redirect(buildPath("/dashboard", { message: "Profile updated." }));
+  return {
+    status: "success",
+    message: "Your profile has been saved.",
+  };
 }
 
 export async function toggleSavedResourceAction(formData: FormData) {
@@ -234,4 +245,27 @@ export async function createCommunityPostAction(formData: FormData) {
 
   revalidateAppShell();
   redirect(buildPath("/community", { message: "Your post is now live." }));
+}
+
+export async function createCommunityReplyAction(formData: FormData) {
+  const currentUser = await requireCurrentUser();
+  const postId = String(formData.get("postId") ?? "");
+  const body = String(formData.get("body") ?? "").trim();
+
+  if (!postId || !body) {
+    redirect(buildPath("/community", { error: "Write a reply before posting." }));
+  }
+
+  await createCommunityReply({
+    postId,
+    userId: currentUser.id,
+    authorName: currentUser.name,
+    authorRole: formatRole(currentUser.role),
+    body,
+  });
+
+  revalidateAppShell();
+  redirect(
+    `/community?message=${encodeURIComponent("Your reply is now live.")}#${postId}`,
+  );
 }

@@ -1,114 +1,144 @@
-import * as local from "@/lib/db";
-import * as hosted from "@/lib/neon-db";
 import { isNeonConfigured } from "@/lib/platform";
 
+type LocalModule = typeof import("@/lib/db");
+
+async function getLocal() {
+  return import("@/lib/db");
+}
+
+async function getHosted() {
+  return import("@/lib/neon-db");
+}
+
 export async function getStats() {
-  return isNeonConfigured ? hosted.getStats() : local.getStats();
+  return isNeonConfigured ? (await getHosted()).getStats() : (await getLocal()).getStats();
 }
 
 export async function getUserByEmail(email: string) {
-  return isNeonConfigured ? hosted.getUserByEmail(email) : local.getUserByEmail(email);
+  return isNeonConfigured
+    ? (await getHosted()).getUserByEmail(email)
+    : (await getLocal()).getUserByEmail(email);
 }
 
 export async function getUserByExternalAuthId(externalAuthId: string) {
   return isNeonConfigured
-    ? hosted.getUserByExternalAuthId(externalAuthId)
-    : local.getUserByExternalAuthId(externalAuthId);
+    ? (await getHosted()).getUserByExternalAuthId(externalAuthId)
+    : (await getLocal()).getUserByExternalAuthId(externalAuthId);
 }
 
 export async function getUserAuthByEmail(email: string) {
   return isNeonConfigured
-    ? hosted.getUserAuthByEmail(email)
-    : local.getUserAuthByEmail(email);
+    ? (await getHosted()).getUserAuthByEmail(email)
+    : (await getLocal()).getUserAuthByEmail(email);
 }
 
 export async function getUserById(userId: string) {
-  return isNeonConfigured ? hosted.getUserById(userId) : local.getUserById(userId);
+  return isNeonConfigured
+    ? (await getHosted()).getUserById(userId)
+    : (await getLocal()).getUserById(userId);
 }
 
 export async function createUser(
-  input: Parameters<typeof local.createUser>[0],
+  input: Parameters<LocalModule["createUser"]>[0],
 ) {
-  return isNeonConfigured ? hosted.createUser(input) : local.createUser(input);
+  return isNeonConfigured
+    ? (await getHosted()).createUser(input)
+    : (await getLocal()).createUser(input);
 }
 
 export async function upsertHostedUser(
-  input: Parameters<typeof local.upsertHostedUser>[0],
+  input: Parameters<LocalModule["upsertHostedUser"]>[0],
 ) {
   return isNeonConfigured
-    ? hosted.upsertHostedUser(input)
-    : local.upsertHostedUser(input);
+    ? (await getHosted()).upsertHostedUser(input)
+    : (await getLocal()).upsertHostedUser(input);
 }
 
 export async function updateUserProfile(
   userId: string,
-  input: Parameters<typeof local.updateUserProfile>[1],
+  input: Parameters<LocalModule["updateUserProfile"]>[1],
 ) {
   return isNeonConfigured
-    ? hosted.updateUserProfile(userId, input)
-    : local.updateUserProfile(userId, input);
+    ? (await getHosted()).updateUserProfile(userId, input)
+    : (await getLocal()).updateUserProfile(userId, input);
 }
 
 export async function createSession(userId: string, expiresAt: string) {
   return isNeonConfigured
-    ? hosted.createSession(userId, expiresAt)
-    : local.createSession(userId, expiresAt);
+    ? (await getHosted()).createSession(userId, expiresAt)
+    : (await getLocal()).createSession(userId, expiresAt);
 }
 
 export async function getSession(sessionId: string) {
-  return isNeonConfigured ? hosted.getSession(sessionId) : local.getSession(sessionId);
+  return isNeonConfigured
+    ? (await getHosted()).getSession(sessionId)
+    : (await getLocal()).getSession(sessionId);
 }
 
 export async function deleteSession(sessionId: string) {
   return isNeonConfigured
-    ? hosted.deleteSession(sessionId)
-    : local.deleteSession(sessionId);
+    ? (await getHosted()).deleteSession(sessionId)
+    : (await getLocal()).deleteSession(sessionId);
 }
 
 export async function deleteExpiredSessions() {
   return isNeonConfigured
-    ? hosted.deleteExpiredSessions()
-    : local.deleteExpiredSessions();
+    ? (await getHosted()).deleteExpiredSessions()
+    : (await getLocal()).deleteExpiredSessions();
 }
 
 export async function listResources(userId?: string | null) {
   return isNeonConfigured
-    ? hosted.listResources(userId)
-    : local.listResources(userId);
+    ? (await getHosted()).listResources(userId)
+    : (await getLocal()).listResources(userId);
 }
 
 export async function listSavedResources(userId: string) {
   return isNeonConfigured
-    ? hosted.listSavedResources(userId)
-    : local.listSavedResources(userId);
+    ? (await getHosted()).listSavedResources(userId)
+    : (await getLocal()).listSavedResources(userId);
 }
 
 export async function toggleSavedResource(userId: string, resourceId: string) {
   return isNeonConfigured
-    ? hosted.toggleSavedResource(userId, resourceId)
-    : local.toggleSavedResource(userId, resourceId);
+    ? (await getHosted()).toggleSavedResource(userId, resourceId)
+    : (await getLocal()).toggleSavedResource(userId, resourceId);
 }
 
 export async function listEvents() {
-  return isNeonConfigured ? hosted.listEvents() : local.listEvents();
+  return isNeonConfigured ? (await getHosted()).listEvents() : (await getLocal()).listEvents();
 }
 
 export async function listCommunityPosts(limit = 20) {
   return isNeonConfigured
-    ? hosted.listCommunityPosts(limit)
-    : local.listCommunityPosts(limit);
+    ? (await getHosted()).listCommunityPosts(limit)
+    : (await getLocal()).listCommunityPosts(limit);
+}
+
+export async function listCommunityReplies() {
+  return isNeonConfigured
+    ? (await getHosted()).listCommunityReplies()
+    : (await getLocal()).listCommunityReplies();
 }
 
 export async function createCommunityPost(
-  input: Parameters<typeof local.createCommunityPost>[0],
+  input: Parameters<LocalModule["createCommunityPost"]>[0],
 ) {
   return isNeonConfigured
-    ? hosted.createCommunityPost(input)
-    : local.createCommunityPost(input);
+    ? (await getHosted()).createCommunityPost(input)
+    : (await getLocal()).createCommunityPost(input);
+}
+
+export async function createCommunityReply(
+  input: Parameters<LocalModule["createCommunityReply"]>[0],
+) {
+  return isNeonConfigured
+    ? (await getHosted()).createCommunityReply(input)
+    : (await getLocal()).createCommunityReply(input);
 }
 
 export async function listProfessionals() {
   return isNeonConfigured
-    ? hosted.listProfessionals()
-    : local.listProfessionals();
+    ? (await getHosted()).listProfessionals()
+    : (await getLocal()).listProfessionals();
 }

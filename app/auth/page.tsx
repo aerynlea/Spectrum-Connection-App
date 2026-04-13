@@ -33,9 +33,8 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
         <p className="eyebrow">Account access</p>
         <h1>Create your Guiding Light profile and start shaping the experience.</h1>
         <p className="hero-lead">
-          {isClerkConfigured
-            ? "Clerk is enabled for this app, so account creation and sign-in can run through managed authentication while the app keeps syncing profile data into Guiding Light."
-            : "This first authentication flow is fully server-side and backed by the local SQLite app database, so sign-up, sign-in, and personalized recommendations are already working end to end."}
+          Create a profile to save resources, join conversations, and start
+          seeing support that fits your life a little more closely.
         </p>
       </section>
 
@@ -46,15 +45,14 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
         <section className="section split-layout">
           <div className="section-panel">
             <SectionHeading
-              eyebrow="Managed sign in"
-              intro="Clerk handles identity, session management, and secure sign-in flows for deployment."
-              title="Use the hosted sign-in flow."
+              eyebrow="Sign in"
+              intro="Use the secure sign-in flow to open your Guiding Light account."
+              title="Welcome back."
             />
             <div className="empty-state">
               <p>
-                The app is configured to use Clerk for authentication in this
-                environment. Continue into the hosted auth screens, then finish
-                your Guiding Light profile from the dashboard.
+                Continue to the sign-in screens, then finish your profile so
+                Guiding Light can highlight the support that fits you best.
               </p>
               <div className="button-row">
                 <Link className="button-primary" href="/sign-in">
@@ -69,35 +67,32 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
 
           <div className="section-panel section-panel--accent">
             <SectionHeading
-              eyebrow="Profile sync"
-              intro="Clerk stores the identity layer while Guiding Light keeps app-specific profile and recommendation data."
-              title="How the hosted flow works."
+              eyebrow="Getting started"
+              intro="A few quick steps help turn your account into a more personal support space."
+              title="What to expect next."
             />
             <div className="support-steps">
               <article className="support-step">
                 <span>01</span>
                 <div>
-                  <h3>Authenticate with Clerk</h3>
-                  <p>Sign in or sign up through managed hosted auth pages.</p>
+                  <h3>Sign in or create your account</h3>
+                  <p>Use the secure account screens to get started.</p>
                 </div>
               </article>
               <article className="support-step">
                 <span>02</span>
                 <div>
-                  <h3>Auto-create your app profile</h3>
-                  <p>
-                    On first login, Guiding Light creates a matching user record
-                    in the app database.
-                  </p>
+                  <h3>Tell us a little about you</h3>
+                  <p>Share your role, age focus, location, and goals.</p>
                 </div>
               </article>
               <article className="support-step">
                 <span>03</span>
                 <div>
-                  <h3>Finish personalization in the dashboard</h3>
+                  <h3>Start exploring your support space</h3>
                   <p>
-                    Set age focus, location, and support goals to improve
-                    recommendations.
+                    Save resources, join the community, and discover helpful
+                    next steps.
                   </p>
                 </div>
               </article>

@@ -5,6 +5,7 @@ import type {
   RecommendationRecord,
   ResourceRecord,
 } from "@/lib/app-types";
+import { isRegionalMatch, matchesUserLocation } from "@/lib/location";
 
 function scoreResource(user: AppUser, resource: ResourceRecord) {
   let score = 0;
@@ -53,6 +54,14 @@ function scoreResource(user: AppUser, resource: ResourceRecord) {
     reasons.push("Includes verified professional guidance.");
   }
 
+  if (isRegionalMatch(user.location, resource.regionTags)) {
+    score += 4;
+    reasons.push("Close to your region.");
+  } else if (matchesUserLocation(user.location, resource.regionTags)) {
+    score += 1;
+    reasons.push("Available wherever you are.");
+  }
+
   if (resource.isSaved) {
     score -= 2;
   }
@@ -89,6 +98,12 @@ function scoreEvent(user: AppUser, event: EventRecord) {
   }
 
   if (event.format === "Virtual") {
+    fitScore += 1;
+  }
+
+  if (isRegionalMatch(user.location, event.regionTags)) {
+    fitScore += 4;
+  } else if (matchesUserLocation(user.location, event.regionTags)) {
     fitScore += 1;
   }
 

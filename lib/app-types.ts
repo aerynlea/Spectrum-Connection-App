@@ -46,6 +46,7 @@ export type ResourceRecord = {
   verified: boolean;
   organization: string;
   href: string;
+  regionTags: string[];
   savedCount: number;
   isSaved: boolean;
 };
@@ -59,6 +60,8 @@ export type EventRecord = {
   eventDate: string;
   hostName: string;
   location: string;
+  href: string;
+  regionTags: string[];
   fitScore?: number;
 };
 
@@ -74,6 +77,16 @@ export type CommunityPostRecord = {
   createdAt: string;
 };
 
+export type CommunityReplyRecord = {
+  id: string;
+  postId: string;
+  userId: string | null;
+  authorName: string;
+  authorRole: string;
+  body: string;
+  createdAt: string;
+};
+
 export type ProfessionalRecord = {
   id: string;
   name: string;
@@ -84,6 +97,8 @@ export type ProfessionalRecord = {
   summary: string;
   acceptingNewFamilies: boolean;
   verified: boolean;
+  href: string;
+  regionTags: string[];
 };
 
 export type RecommendationRecord = ResourceRecord & {

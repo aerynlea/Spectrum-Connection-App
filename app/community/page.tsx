@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 
-import { createCommunityPostAction } from "@/app/actions";
+import {
+  createCommunityPostAction,
+  createCommunityReplyAction,
+} from "@/app/actions";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusBanner } from "@/components/status-banner";
 import { getCurrentUser } from "@/lib/auth";
 import { communityTopicOptions } from "@/lib/catalog";
-import { listCommunityPosts } from "@/lib/data";
+import { listCommunityPosts, listCommunityReplies } from "@/lib/data";
 import { formatDateTime } from "@/lib/formatters";
 import { isClerkConfigured } from "@/lib/platform";
 import { getQueryMessage, type PageSearchParams } from "@/lib/search-params";
@@ -25,16 +28,22 @@ export default async function CommunityPage({
   const message = await getQueryMessage(searchParams, "message");
   const error = await getQueryMessage(searchParams, "error");
   const posts = await listCommunityPosts(12);
+  const replies = await listCommunityReplies();
+  const repliesByPost = replies.reduce<Map<string, typeof replies>>((groups, reply) => {
+    const next = groups.get(reply.postId) ?? [];
+    next.push(reply);
+    groups.set(reply.postId, next);
+    return groups;
+  }, new Map());
 
   return (
     <div className="page">
       <section className="page-intro">
-        <p className="eyebrow">Community Space</p>
+        <p className="eyebrow">Community Message Board</p>
         <h1>A live support network for questions, encouragement, and shared wisdom.</h1>
         <p className="hero-lead">
-          Community is now more than a preview. Signed-in members can post new
-          threads directly into the shared feed while still benefiting from
-          safety guidance and clear topic areas.
+          Ask questions, share what is working, and hear from people who
+          understand both the practical details and the emotions behind them.
         </p>
       </section>
 
@@ -45,8 +54,8 @@ export default async function CommunityPage({
         <div className="section-panel">
           <SectionHeading
             eyebrow="Support circles"
-            intro="Forums stay useful when they are small enough to feel personal and specific enough to stay relevant."
-            title="Topic-based groups help users find the right room."
+            intro="Smaller, clearly named spaces make it easier to find the right conversation without feeling lost."
+            title="Find the room that fits your question."
           />
           <div className="card-grid card-grid--two">
             {communityTopics.map((topic) => (
@@ -62,7 +71,7 @@ export default async function CommunityPage({
         <div className="section-panel section-panel--accent">
           <SectionHeading
             eyebrow="Post to the forum"
-            intro="This form writes directly into the app-backed community feed."
+            intro="Start a conversation when you need ideas, encouragement, or a place to share progress."
             title={
               currentUser
                 ? "Share a question, win, or practical tip."
@@ -119,8 +128,8 @@ export default async function CommunityPage({
           ) : (
             <div className="empty-state">
               <p>
-                Account access is required for posting so conversations stay tied
-                to real profiles and the support feed can remain more accountable.
+                Signing in keeps conversations welcoming and helps everyone get
+                to know the people they are learning from.
               </p>
               <Link
                 className="button-primary"
@@ -137,12 +146,12 @@ export default async function CommunityPage({
         <div className="section-panel">
           <SectionHeading
             eyebrow="Live forum feed"
-            intro="The posts below are coming from the database and update as new members contribute."
-            title="Helpful conversations that move people forward."
+            intro="See what families, self-advocates, and professionals are talking about right now."
+            title="A message board people can answer together."
           />
           <div className="stack-list">
             {posts.map((thread) => (
-              <article className="thread-card" key={thread.id}>
+              <article className="thread-card" id={thread.id} key={thread.id}>
                 <div className="thread-card__meta">
                   <div>
                     <h3>{thread.authorName}</h3>
@@ -155,6 +164,35 @@ export default async function CommunityPage({
                 <h4>{thread.title}</h4>
                 <p>{thread.body}</p>
                 <p className="meta-copy">{thread.topic}</p>
+                <div className="reply-list">
+                  {(repliesByPost.get(thread.id) ?? []).map((reply) => (
+                    <article className="reply-card" key={reply.id}>
+                      <p className="feature-label">
+                        {reply.authorName} • {reply.authorRole} •{" "}
+                        {formatDateTime(reply.createdAt)}
+                      </p>
+                      <p>{reply.body}</p>
+                    </article>
+                  ))}
+                </div>
+                {currentUser ? (
+                  <form action={createCommunityReplyAction} className="reply-form">
+                    <input name="postId" type="hidden" value={thread.id} />
+                    <textarea
+                      name="body"
+                      placeholder="Reply with encouragement, a helpful idea, or a resource that worked for you."
+                      required
+                      rows={3}
+                    />
+                    <button className="button-secondary" type="submit">
+                      Reply to this post
+                    </button>
+                  </form>
+                ) : (
+                  <p className="meta-copy">
+                    Sign in to reply and build the conversation.
+                  </p>
+                )}
               </article>
             ))}
           </div>
@@ -163,8 +201,8 @@ export default async function CommunityPage({
         <div className="section-panel section-panel--accent">
           <SectionHeading
             eyebrow="Safety"
-            intro="A strong support platform needs clear expectations, consistent moderation, and flexible privacy settings."
-            title="Trust is designed into the experience."
+            intro="Clear expectations help people share openly, feel respected, and return with confidence."
+            title="Safety and kindness come first."
           />
           <ul className="bullet-list bullet-list--wide">
             {safetyCommitments.map((commitment) => (

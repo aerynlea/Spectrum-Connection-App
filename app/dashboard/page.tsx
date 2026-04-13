@@ -1,22 +1,28 @@
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 
-import { updateProfileAction } from "@/app/actions";
-import { GoalCheckboxes } from "@/components/goal-checkboxes";
+import { ProfileForm } from "@/components/profile-form";
 import { SaveResourceForm } from "@/components/save-resource-form";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusBanner } from "@/components/status-banner";
 import { requireCurrentUser } from "@/lib/auth";
-import { ageGroupOptions, roleOptions } from "@/lib/catalog";
 import {
   listCommunityPosts,
   listEvents,
   listResources,
   listSavedResources,
 } from "@/lib/data";
-import { formatDateTime, formatGoal, formatMonthDay } from "@/lib/formatters";
+import {
+  formatAgeGroup,
+  formatDateTime,
+  formatGoal,
+  formatMonthDay,
+  formatRole,
+} from "@/lib/formatters";
+import { partitionByLocation } from "@/lib/location";
 import { buildRecommendations } from "@/lib/recommendations";
 import { getQueryMessage, type PageSearchParams } from "@/lib/search-params";
+import { profileQuotes } from "@/lib/site-data";
 
 type DashboardPageProps = {
   searchParams?: PageSearchParams;
@@ -35,6 +41,7 @@ export default async function DashboardPage({
   const events = await listEvents();
   const recentPosts = await listCommunityPosts(3);
   const recommendations = buildRecommendations(currentUser, resources, events);
+  const eventSections = partitionByLocation(recommendations.events, currentUser.location);
 
   return (
     <div className="page">
@@ -64,11 +71,11 @@ export default async function DashboardPage({
         </article>
         <article className="stat-card stat-card--wide">
           <strong>{recommendations.resources.length}</strong>
-          <span>Matched recommendations</span>
+          <span>Suggested resources</span>
         </article>
         <article className="stat-card stat-card--wide">
           <strong>{recommendations.events.length}</strong>
-          <span>Relevant upcoming events</span>
+          <span>Upcoming events</span>
         </article>
       </section>
 
@@ -76,67 +83,41 @@ export default async function DashboardPage({
         <div className="section-panel">
           <SectionHeading
             eyebrow="Profile settings"
-            intro="Profile signals drive the recommendation engine, so this is where we tune what the app should surface first."
+            intro="A few details help Guiding Light bring forward support that feels more relevant to you."
             title="Keep your support profile current."
           />
-          <form action={updateProfileAction} className="form-card">
-            <div className="field-grid">
-              <label className="field">
-                <span>Name</span>
-                <input defaultValue={currentUser.name} name="name" required type="text" />
-              </label>
-              <label className="field">
-                <span>Location</span>
-                <input
-                  defaultValue={currentUser.location}
-                  name="location"
-                  required
-                  type="text"
-                />
-              </label>
-            </div>
-
-            <div className="field-grid">
-              <label className="field">
-                <span>Your role</span>
-                <select defaultValue={currentUser.role} name="role" required>
-                  {roleOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field">
-                <span>Current age focus</span>
-                <select defaultValue={currentUser.ageGroup} name="ageGroup" required>
-                  {ageGroupOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <div className="field">
-              <span>Priority goals</span>
-              <p className="field-help">
-                These goals shape the resources and events that get the highest recommendation scores.
-              </p>
-              <GoalCheckboxes selected={currentUser.goals} />
-            </div>
-
-            <button className="button-primary" type="submit">
-              Save profile
-            </button>
-          </form>
+          <ProfileForm currentUser={currentUser} />
         </div>
 
         <div className="section-panel section-panel--accent">
           <SectionHeading
+            eyebrow="Profile snapshot"
+            intro="This is the support profile Guiding Light is using right now."
+            title="What your profile currently says."
+          />
+          <article className="sub-card">
+            <h3>{currentUser.name}</h3>
+            <p>{currentUser.location}</p>
+            <div className="pill-list pill-list--compact">
+              <span className="pill pill--soft">{formatRole(currentUser.role)}</span>
+              <span className="pill pill--soft">{formatAgeGroup(currentUser.ageGroup)}</span>
+            </div>
+            <div className="pill-list pill-list--compact">
+              {currentUser.goals.map((goal) => (
+                <span className="pill pill--soft" key={goal}>
+                  {formatGoal(goal)}
+                </span>
+              ))}
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section className="section split-layout">
+        <div className="section-panel">
+          <SectionHeading
             eyebrow="Recommended resources"
-            intro="These are scored from your role, age focus, selected goals, and current saved-resource history."
+            intro="Chosen around your role, age focus, goals, and what you have already saved."
             title="A better starting point for your next step."
           />
           <div className="stack-list">
@@ -160,17 +141,21 @@ export default async function DashboardPage({
                     </span>
                   ))}
                 </div>
+                <div className="resource-meta">
+                  <span>{resource.organization}</span>
+                  <Link className="text-link" href={resource.href} rel="noreferrer" target="_blank">
+                    Visit resource
+                  </Link>
+                </div>
               </article>
             ))}
           </div>
         </div>
-      </section>
 
-      <section className="section split-layout">
-        <div className="section-panel">
+        <div className="section-panel section-panel--accent">
           <SectionHeading
             eyebrow="Saved resources"
-            intro="Everything you bookmark stays here so the app can feel more like a workspace than a one-time browse."
+            intro="Keep your most useful finds in one place so they are easy to return to."
             title="Your saved list."
           />
           {savedResources.length > 0 ? (
@@ -191,6 +176,9 @@ export default async function DashboardPage({
                     />
                   </div>
                   <p>{resource.summary}</p>
+                  <Link className="text-link" href={resource.href} rel="noreferrer" target="_blank">
+                    Visit resource
+                  </Link>
                 </article>
               ))}
             </div>
@@ -206,15 +194,46 @@ export default async function DashboardPage({
             </div>
           )}
         </div>
+      </section>
 
+      <section className="section split-layout">
         <div className="section-panel section-panel--accent">
           <SectionHeading
             eyebrow="Upcoming matches"
-            intro="Event matches are based on role and age-stage fit, with virtual formats getting a slight flexibility boost."
+            intro="A few upcoming events that may feel especially relevant right now."
             title="Events you may want to keep an eye on."
           />
           <div className="stack-list">
-            {recommendations.events.map((event) => {
+            {eventSections.nearby.length > 0
+              ? eventSections.nearby.map((event) => {
+                  const { month, day } = formatMonthDay(event.eventDate);
+
+                  return (
+                    <article className="event-card" key={event.id}>
+                      <div className="event-date">
+                        <span>{month}</span>
+                        <strong>{day}</strong>
+                      </div>
+                      <div className="event-card__body">
+                        <p className="feature-label">Near {currentUser.location} • {event.format}</p>
+                        <h3>{event.title}</h3>
+                        <p>{event.detail}</p>
+                        <p className="event-meta">
+                          {formatDateTime(event.eventDate)} • {event.location}
+                        </p>
+                        <Link
+                          className="text-link"
+                          href={event.href}
+                          rel="noreferrer"
+                          target="_blank"
+                        >
+                          View event details
+                        </Link>
+                      </div>
+                    </article>
+                  );
+                })
+              : recommendations.events.map((event) => {
               const { month, day } = formatMonthDay(event.eventDate);
 
               return (
@@ -232,19 +251,54 @@ export default async function DashboardPage({
                     <p className="event-meta">
                       {formatDateTime(event.eventDate)} • {event.location}
                     </p>
+                    <Link
+                      className="text-link"
+                      href={event.href}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      View event details
+                    </Link>
                   </div>
                 </article>
               );
             })}
           </div>
         </div>
+
+        <div className="section-panel">
+          <SectionHeading
+            eyebrow="Broader opportunities"
+            intro="A wider mix of virtual and national events helps you stay connected even when nothing local fits yet."
+            title="National and online options."
+          />
+          <div className="stack-list">
+            {eventSections.broader.slice(0, 3).map((event) => (
+              <article className="sub-card" key={event.id}>
+                <h3>{event.title}</h3>
+                <p>{event.detail}</p>
+                <p className="meta-copy">
+                  {formatDateTime(event.eventDate)} • {event.location}
+                </p>
+                <Link
+                  className="text-link"
+                  href={event.href}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  Open event page
+                </Link>
+              </article>
+            ))}
+          </div>
+        </div>
       </section>
 
       <section className="section">
         <SectionHeading
-          eyebrow="Recent conversations"
-          intro="Community posts can become another recommendation signal later, but they are already available to browse and contribute to."
-          title="Support happening in the forum right now."
+          eyebrow="Message board"
+          intro="Drop into encouraging conversations whenever you want ideas, reassurance, or practical tips."
+          title="Support happening in the community right now."
         />
         <div className="card-grid card-grid--three">
           {recentPosts.map((post) => (
@@ -255,6 +309,27 @@ export default async function DashboardPage({
               <p className="meta-copy">
                 {post.authorName} • {formatDateTime(post.createdAt)}
               </p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="section">
+        <SectionHeading
+          eyebrow="Real voices"
+          intro="A few words from autistic advocates and leaders who have helped shape the conversation."
+          title="Voices worth carrying with you."
+        />
+        <div className="card-grid card-grid--three">
+          {profileQuotes.map((quote) => (
+            <article className="feature-card" key={quote.author}>
+              <p>{quote.quote}</p>
+              <p className="feature-label">
+                {quote.author} • {quote.role}
+              </p>
+              <Link className="text-link" href={quote.href} rel="noreferrer" target="_blank">
+                {quote.sourceLabel}
+              </Link>
             </article>
           ))}
         </div>

@@ -51,6 +51,14 @@ export type ProfessionalRole = {
   description: string;
 };
 
+export type ProfileQuote = {
+  quote: string;
+  author: string;
+  role: string;
+  href: string;
+  sourceLabel: string;
+};
+
 export const audienceGroups = [
   "Parents and caregivers",
   "Self-advocates",
@@ -74,7 +82,7 @@ export const featureCards: FeatureCard[] = [
   },
   {
     label: "Community First",
-    title: "Connection is built into the product.",
+    title: "Connection is part of every step.",
     description:
       "Topic-specific forums, local circles, and guided discussion prompts help families and self-advocates swap advice, celebrate wins, and reduce isolation.",
   },
@@ -346,6 +354,31 @@ export const verificationSteps = [
   "Professionals submit credentials, specialties, and service regions.",
   "The platform reviews licenses, affiliations, and public-facing practice information.",
   "Verified members receive badges and role-specific publishing tools with ongoing moderation.",
+];
+
+export const profileQuotes: ProfileQuote[] = [
+  {
+    quote: '"Autism is part of who I am."',
+    author: "Temple Grandin",
+    role: "Author and autism advocate",
+    href: "https://www.autismspeaks.org/life-spectrum/autism-quotes",
+    sourceLabel: "Source: Autism Speaks",
+  },
+  {
+    quote:
+      "\"If you’ve met one individual with autism, you’ve met one individual with autism.\"",
+    author: "Stephen Shore",
+    role: "Professor and autism advocate",
+    href: "https://www.autismspeaks.org/life-spectrum/autism-quotes",
+    sourceLabel: "Source: Autism Speaks",
+  },
+  {
+    quote: "\"Autism can't define me. I define autism.\"",
+    author: "Kerry Magro",
+    role: "Autistic speaker and author",
+    href: "https://www.autismspeaks.org/life-spectrum/autism-quotes",
+    sourceLabel: "Source: Autism Speaks",
+  },
 ];
 
 export const safetyCommitments = [
