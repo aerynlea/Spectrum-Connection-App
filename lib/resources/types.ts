@@ -7,4 +7,5 @@ export type Resource = {
   location: string;
   verified: boolean;
   link?: string;
+  communityTopics?: string[];
 };

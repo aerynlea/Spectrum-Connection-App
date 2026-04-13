@@ -237,11 +237,19 @@ a {
   gap: 1.4rem;
 }
 
+.founder-story {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.95fr);
+  gap: 1.4rem;
+}
+
 .hero-copy,
 .hero-panel,
 .section-panel,
 .cta-banner,
-.page-intro {
+.page-intro,
+.founder-story__copy,
+.founder-gallery {
   position: relative;
   overflow: hidden;
   border: 1px solid var(--border);
@@ -261,6 +269,71 @@ a {
 
 .page-intro {
   padding: 2.8rem 3rem;
+}
+
+.founder-story__copy {
+  padding: 3rem;
+  background:
+    radial-gradient(circle at top left, rgba(123, 188, 255, 0.16), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(255, 196, 139, 0.18), transparent 22%),
+    var(--surface);
+}
+
+.founder-story__copy h2 {
+  margin: 0;
+  font-size: clamp(2.1rem, 4vw, 3.4rem);
+  line-height: 1.02;
+  letter-spacing: -0.05em;
+  max-width: 12ch;
+}
+
+.founder-story__text {
+  margin: 1rem 0 0;
+  max-width: 64ch;
+  color: var(--muted);
+  line-height: 1.8;
+}
+
+.founder-gallery {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 0.9rem;
+  padding: 1rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(246, 247, 255, 0.84)),
+    radial-gradient(circle at top right, rgba(255, 168, 115, 0.18), transparent 20%);
+}
+
+.founder-gallery__hero,
+.founder-gallery__card {
+  overflow: hidden;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 16px 36px rgba(95, 105, 181, 0.08);
+}
+
+.founder-gallery__hero {
+  grid-row: span 2;
+  min-height: 28rem;
+}
+
+.founder-gallery__card {
+  min-height: 13.5rem;
+}
+
+.founder-gallery__card--warm {
+  transform: translateY(0.45rem);
+}
+
+.founder-gallery__card--accent {
+  transform: translateY(-0.45rem);
+}
+
+.founder-photo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .hero-copy h1,
@@ -1020,6 +1093,7 @@ a {
 
 @media (max-width: 900px) {
   .hero-grid,
+  .founder-story,
   .split-layout,
   .card-grid--three,
   .card-grid--two,
@@ -1030,13 +1104,15 @@ a {
   }
 
   .hero-copy,
-  .page-intro {
+  .page-intro,
+  .founder-story__copy {
     padding: 2.4rem 1.5rem;
   }
 
   .hero-panel,
   .section-panel,
-  .cta-banner {
+  .cta-banner,
+  .founder-gallery {
     padding: 1.5rem;
   }
 
@@ -1065,8 +1141,21 @@ a {
     grid-template-columns: 1fr;
   }
 
+  .founder-gallery {
+    grid-template-columns: 1fr;
+  }
+
+  .founder-gallery__hero,
+  .founder-gallery__card,
+  .founder-gallery__card--warm,
+  .founder-gallery__card--accent {
+    min-height: auto;
+    transform: none;
+  }
+
   .hero-copy h1,
-  .page-intro h1 {
+  .page-intro h1,
+  .founder-story__copy h2 {
     max-width: 100%;
     font-size: 2.5rem;
   }

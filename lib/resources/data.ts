@@ -11,6 +11,7 @@ export const resources: Resource[] = [
     location: "Local",
     verified: true,
     link: "https://example.com/speech-therapy",
+    communityTopics: ["Therapy", "Support", "Practical Tips", "School Support"],
   },
   {
     id: "parent-support-group",
@@ -22,6 +23,7 @@ export const resources: Resource[] = [
     location: "Virtual",
     verified: true,
     link: "https://example.com/parent-group",
+    communityTopics: ["Community", "Parent Support", "Support", "Practical Tips"],
   },
   {
     id: "employment-transition-program",
@@ -33,5 +35,6 @@ export const resources: Resource[] = [
     location: "Local",
     verified: false,
     link: "https://example.com/employment-program",
+    communityTopics: ["Employment", "Young Adult", "Practical Tips", "Support"],
   },
 ];

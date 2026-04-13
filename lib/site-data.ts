@@ -59,6 +59,15 @@ export type ProfileQuote = {
   sourceLabel: string;
 };
 
+export const founderStoryHighlights = [
+  "Single motherhood and co-parenting",
+  "Diagnosed at age 2 and a half",
+  "Homeschooling journey",
+  "ABA support early on",
+  "A village of intentional therapists",
+  "Connection and community",
+];
+
 export const audienceGroups = [
   "Parents and caregivers",
   "Self-advocates",

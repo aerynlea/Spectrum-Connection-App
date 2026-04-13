@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 
@@ -14,6 +15,7 @@ import {
   ageTracks,
   audienceGroups,
   featureCards,
+  founderStoryHighlights,
   professionalRoles,
 } from "@/lib/site-data";
 
@@ -167,6 +169,80 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               </>
             )}
           </div>
+        </div>
+      </section>
+
+      <section className="section founder-story">
+        <div className="founder-story__copy">
+          <p className="eyebrow">Why Guiding Light Exists</p>
+          <h2>Built from one mother&apos;s lived experience and a deep belief in community.</h2>
+          <p className="hero-lead">
+            Motherhood is its own blessing and its own challenge. You want the
+            world to see how truly loving and special your little one is, and
+            sometimes the best way through is to stay hopeful and believe it
+            will all turn out okay.
+          </p>
+          <p className="founder-story__text">
+            My son was diagnosed at the age of two and a half. We are
+            homeschooling right now, and we were fortunate to receive ABA
+            services as quickly as we did. Through this journey, I learned I
+            would not have made it without community.
+          </p>
+          <p className="founder-story__text">
+            As a 32-year-old single mother navigating co-parenting, I have been
+            deeply blessed by a village that showed up for us, especially the
+            wonderful and intentional therapists who have walked with us over
+            the last four years. Guiding Light is the space I wanted to create
+            for other families and autistic people who need connection,
+            encouragement, and real-life support.
+          </p>
+          <div className="pill-list" aria-label="Founder story highlights">
+            {founderStoryHighlights.map((highlight) => (
+              <span className="pill" key={highlight}>
+                {highlight}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="founder-gallery">
+          <article className="founder-gallery__hero">
+            <Image
+              alt="A joyful portrait of the app founder and her six-year-old son together."
+              className="founder-photo"
+              height={1600}
+              priority
+              src="/family/founder-mother-son-1.jpeg"
+              width={1200}
+            />
+          </article>
+          <article className="founder-gallery__card founder-gallery__card--warm">
+            <Image
+              alt="The founder and her son smiling together on a blue chair."
+              className="founder-photo"
+              height={1400}
+              src="/family/founder-mother-son-2.jpeg"
+              width={1200}
+            />
+          </article>
+          <article className="founder-gallery__card">
+            <Image
+              alt="A portrait of the founder's son smiling in glasses."
+              className="founder-photo"
+              height={1400}
+              src="/family/founder-son-portrait-1.jpeg"
+              width={1200}
+            />
+          </article>
+          <article className="founder-gallery__card founder-gallery__card--accent">
+            <Image
+              alt="A portrait of the founder's son sitting proudly in a Cars jacket."
+              className="founder-photo"
+              height={1400}
+              src="/family/founder-son-portrait-2.jpeg"
+              width={1200}
+            />
+          </article>
         </div>
       </section>
 

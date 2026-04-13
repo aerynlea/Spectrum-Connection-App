@@ -11,6 +11,23 @@ type ResourceDetailPageProps = {
   }>;
 };
 
+function normalizeLabel(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function containsWholePhrase(text: string, phrase: string) {
+  if (!phrase) {
+    return false;
+  }
+
+  const pattern = new RegExp(`(^|\\b)${escapeRegExp(phrase)}(\\b|$)`, "i");
+  return pattern.test(text);
+}
+
 export function generateStaticParams() {
   return listResources().map((resource) => ({
     id: resource.id,
@@ -27,16 +44,47 @@ export default async function ResourceDetailPage({
     notFound();
   }
 
-  const relatedPosts = listCommunityPosts(20).filter((post) => {
-    const topicMatch =
-      post.topic.toLowerCase() === resource.category.toLowerCase();
+  const topicAliases = Array.from(
+    new Set([resource.category, ...(resource.communityTopics ?? [])].map(normalizeLabel)),
+  );
 
-    const tagMatch = post.tag
-      .toLowerCase()
-      .includes(resource.category.toLowerCase());
+  const relatedPosts = listCommunityPosts(20)
+    .map((post) => {
+      const topic = normalizeLabel(post.topic);
+      const tag = normalizeLabel(post.tag);
+      const title = normalizeLabel(post.title);
+      const body = normalizeLabel(post.body);
 
-    return topicMatch || tagMatch;
-  });
+      let score = 0;
+
+      for (const alias of topicAliases) {
+        if (topic === alias) {
+          score += 5;
+        }
+
+        if (tag === alias) {
+          score += 4;
+        } else if (containsWholePhrase(tag, alias)) {
+          score += 3;
+        }
+
+        if (containsWholePhrase(title, alias)) {
+          score += 2;
+        }
+
+        if (containsWholePhrase(body, alias)) {
+          score += 1;
+        }
+      }
+
+      return {
+        post,
+        score,
+      };
+    })
+    .filter((item) => item.score >= 4)
+    .sort((a, b) => b.score - a.score)
+    .map((item) => item.post);
 
   return (
     <div className="page">
@@ -77,6 +125,11 @@ export default async function ResourceDetailPage({
               <p className="meta-copy">
                 <strong>Location:</strong> {resource.location}
               </p>
+              {resource.communityTopics?.length ? (
+                <p className="meta-copy">
+                  <strong>Related topics:</strong> {resource.communityTopics.join(", ")}
+                </p>
+              ) : null}
             </div>
 
             {resource.link ? (
