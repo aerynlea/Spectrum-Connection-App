@@ -252,10 +252,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <section className="section">
         <SectionHeading
           eyebrow="At-Home Support"
-          intro="These newer sections bring together the kinds of digital supports families often search for across five different tabs."
-          title="Play, learn, watch, and handle practical next steps in one place."
+          intro="These quick starts bring together the kinds of supports families often end up searching for across multiple tabs."
+          title="Play, learn, prepare, and handle practical next steps in one place."
         />
-        <div className="card-grid card-grid--four">
+        <div className="card-grid card-grid--five">
           {digitalQuickStarts.map((quickStart) => (
             <Link
               className="feature-card"

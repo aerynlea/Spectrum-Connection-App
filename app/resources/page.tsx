@@ -95,7 +95,7 @@ export default async function ResourcesPage({
           intro="Start with the kind of help you need right now instead of scrolling through everything at once."
           title="A calmer way to open the directory."
         />
-        <div className="card-grid card-grid--four">
+        <div className="card-grid card-grid--five">
           {quickStarts.map((quickStart) => (
             <Link
               className="feature-card"

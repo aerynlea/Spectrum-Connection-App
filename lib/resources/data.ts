@@ -2,6 +2,14 @@ import type { ResourceQuickStart } from "@/lib/resources/types";
 
 export const resourceQuickStarts: ResourceQuickStart[] = [
   {
+    slug: "haircuts-and-grooming",
+    eyebrow: "Haircuts",
+    title: "Barber, salon, and grooming support that feels more sensory-aware.",
+    description:
+      "Open haircut prep guides, provider finders, and local salon options without needing to hunt through the full directory first.",
+    collectionName: "Haircuts and Grooming",
+  },
+  {
     slug: "online-play-community",
     eyebrow: "Online Play",
     title: "Gaming spaces that feel more welcoming and interest-led.",
