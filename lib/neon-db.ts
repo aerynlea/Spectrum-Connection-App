@@ -387,7 +387,8 @@ async function seedHostedDatabase() {
         location_scope,
         verified,
         organization,
-        href
+        href,
+        region_tags
       ) VALUES (
         ${resource.id},
         ${resource.title},
@@ -429,7 +430,9 @@ async function seedHostedDatabase() {
         format,
         event_date,
         host_name,
-        location
+        location,
+        href,
+        region_tags
       ) VALUES (
         ${event.id},
         ${event.title},
