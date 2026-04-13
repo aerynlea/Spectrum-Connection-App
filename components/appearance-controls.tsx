@@ -160,11 +160,12 @@ function AppearancePanelContent({
 export function AppearanceControls({
   variant = "popover",
 }: AppearanceControlsProps) {
-  const { mode, palette } = useSyncExternalStore(
+  const appearance = useSyncExternalStore(
     subscribeToAppearance,
     readAppearance,
     () => defaultAppearance,
   );
+  const { mode, palette } = appearance;
 
   useEffect(() => {
     applyAppearance(mode, palette, false);

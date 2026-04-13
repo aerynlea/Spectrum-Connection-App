@@ -177,25 +177,26 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <section className="section founder-story">
         <div className="founder-story__copy">
           <p className="eyebrow">Why Guiding Light Exists</p>
-          <h2>Built from one mother&apos;s lived experience and a deep belief in community.</h2>
+          <h2>Built from one mother&apos;s lived experience and the power of a village that shows up.</h2>
           <p className="hero-lead">
-            Motherhood is its own blessing and its own challenge. You want the
-            world to see how truly loving and special your little one is, and
-            sometimes the best way through is to stay hopeful and believe it
-            will all turn out okay.
+            Motherhood is a blessing, and it can also be deeply challenging to
+            navigate. You want the world to see your little one the way you do:
+            loving, special, and full of possibility. In the hardest moments,
+            hope becomes its own kind of strength, helping you keep going and
+            trust that things can turn out okay.
           </p>
           <p className="founder-story__text">
             My son was diagnosed at the age of two and a half. We are
             homeschooling right now, and we were fortunate to receive ABA
-            services as quickly as we did. Through this journey, I learned I
-            would not have made it without community.
+            services as quickly as we did. Even with that support, I learned
+            early on that I would not have made it without community.
           </p>
           <p className="founder-story__text">
             As a 32-year-old single mother navigating co-parenting, I have been
             deeply blessed by a village that showed up for us, especially the
-            wonderful and intentional therapists who have walked with us over
-            the last four years. Guiding Light is the space I wanted to create
-            for other families and autistic people who need connection,
+            wonderful, intentional therapists who have walked beside our family
+            over the last four years. Guiding Light is the space I wanted to
+            create for other families and autistic people who need connection,
             encouragement, and real-life support.
           </p>
           <div className="pill-list" aria-label="Founder story highlights">
