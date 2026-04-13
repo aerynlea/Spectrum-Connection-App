@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { ResourceCard } from "@/components/resources/resource-card";
 import { SectionHeading } from "@/components/section-heading";
 import { getFilteredResources } from "@/lib/resources";
 
@@ -72,26 +72,7 @@ export default async function ResourcesPage({
           {resources.length > 0 ? (
             <div className="stack-list">
               {resources.map((resource) => (
-                <Link
-                  key={resource.id}
-                  href={`/resources/${resource.id}`}
-                  className="thread-card"
-                >
-                  <div className="thread-card__meta">
-                    <div>
-                      <h3>{resource.title}</h3>
-                      <p>{resource.location}</p>
-                    </div>
-                    <span className="tag-chip">
-                      {resource.verified ? "Verified" : "Shared"}
-                    </span>
-                  </div>
-
-                  <p>{resource.description}</p>
-                  <p className="meta-copy">
-                    {resource.category} • {resource.ageGroup}
-                  </p>
-                </Link>
+                <ResourceCard key={resource.id} resource={resource} />
               ))}
             </div>
           ) : (
