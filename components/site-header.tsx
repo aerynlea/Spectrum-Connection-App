@@ -18,20 +18,70 @@ const navItems = [
 export async function SiteHeader() {
   noStore();
   const currentUser = await getCurrentUser();
+  const signInHref = isClerkConfigured ? "/sign-in" : "/auth";
+  const signUpHref = isClerkConfigured ? "/sign-up" : "/auth";
 
   return (
     <header className="site-header">
       <div className="site-header__inner">
-        <Link className="brand-lockup" href="/">
-          <span className="brand-mark-wrap">
-            <BrandMark size={54} />
-          </span>
-          <span>
-            <span className="brand-name">Guiding Light</span>
-            <span className="brand-tagline">Where Every Journey Connects</span>
-          </span>
-        </Link>
-        <nav aria-label="Primary" className="site-nav">
+        <div className="site-header__top">
+          <Link className="brand-lockup" href="/">
+            <span className="brand-mark-wrap">
+              <BrandMark size={54} />
+            </span>
+            <span>
+              <span className="brand-name">Guiding Light</span>
+              <span className="brand-tagline">Where Every Journey Connects</span>
+            </span>
+          </Link>
+
+          <details className="mobile-nav">
+            <summary className="mobile-nav__toggle">
+              <span className="mobile-nav__toggle-label">Menu</span>
+              <span aria-hidden="true" className="mobile-nav__icon">
+                <span />
+                <span />
+                <span />
+              </span>
+            </summary>
+
+            <nav aria-label="Mobile" className="mobile-nav__panel">
+              <div className="mobile-nav__group">
+                {navItems.map((item) => (
+                  <Link className="mobile-nav__link" href={item.href} key={`mobile-${item.href}`}>
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+
+              <div className="mobile-nav__divider" />
+
+              <div className="mobile-nav__group mobile-nav__group--actions">
+                {currentUser ? (
+                  <>
+                    <Link className="mobile-nav__link mobile-nav__link--account" href="/dashboard">
+                      {isClerkConfigured ? "Dashboard" : currentUser.name}
+                    </Link>
+                    <div className="mobile-nav__account-control">
+                      {isClerkConfigured ? <ClerkUserButton /> : <SignOutForm />}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Link className="nav-secondary mobile-nav__action" href={signInHref}>
+                      Sign in
+                    </Link>
+                    <Link className="nav-cta mobile-nav__action" href={signUpHref}>
+                      Join the Circle
+                    </Link>
+                  </>
+                )}
+              </div>
+            </nav>
+          </details>
+        </div>
+
+        <nav aria-label="Primary" className="site-nav site-nav--desktop">
           {navItems.map((item) => (
             <Link className="nav-link" href={item.href} key={item.href}>
               {item.label}
@@ -46,10 +96,10 @@ export async function SiteHeader() {
             </>
           ) : (
             <>
-              <Link className="nav-secondary" href={isClerkConfigured ? "/sign-in" : "/auth"}>
+              <Link className="nav-secondary" href={signInHref}>
                 Sign in
               </Link>
-              <Link className="nav-cta" href={isClerkConfigured ? "/sign-up" : "/auth"}>
+              <Link className="nav-cta" href={signUpHref}>
                 Join the Circle
               </Link>
             </>
