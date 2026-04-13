@@ -134,7 +134,9 @@ export type ProfileUpdateInput = {
   goals: GoalKey[];
 };
 
-const dataDirectory = join(process.cwd(), "data");
+const dataDirectory = process.env.VERCEL
+  ? join("/tmp", "guiding-light-data")
+  : join(process.cwd(), "data");
 const databasePath = join(dataDirectory, "guiding-light.db");
 const schemaVersion = "2026-04-real-connections";
 
