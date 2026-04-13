@@ -4,7 +4,7 @@ export type PageSearchParams =
 
 export async function getQueryMessage(
   searchParams: PageSearchParams,
-  key: "error" | "message",
+  key: string,
 ) {
   const resolvedParams = searchParams ? await searchParams : undefined;
   const value = resolvedParams?.[key];

@@ -89,10 +89,10 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
               <article className="support-step">
                 <span>03</span>
                 <div>
-                  <h3>Start exploring your support space</h3>
+                  <h3>Finish your welcome setup</h3>
                   <p>
-                    Save resources, join the community, and discover helpful
-                    next steps.
+                    Take a quick onboarding pass so the support you see feels
+                    more personal from the start.
                   </p>
                 </div>
               </article>
@@ -206,10 +206,11 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
       <section className="cta-banner">
         <div>
           <p className="eyebrow">What happens next</p>
-          <h2>Once you sign in, you can save resources and join the conversation.</h2>
+          <h2>Once you sign in, we&apos;ll help you shape a more personal support space.</h2>
           <p>
-            Your profile can also bring forward resources and events that feel
-            closer to your season of life.
+            After a quick onboarding step, your profile can bring forward
+            resources, events, and planning tools that feel closer to your
+            season of life.
           </p>
         </div>
         <div className="button-row">

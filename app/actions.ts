@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { clearSession, establishSession, hashPassword, requireCurrentUser, verifyPassword } from "@/lib/auth";
+import { syncCurrentClerkMetadata } from "@/lib/clerk-metadata";
 import {
   ageGroupOptions,
   communityTopicOptions,
@@ -19,9 +20,11 @@ import {
   toggleSavedResource,
   updateUserProfile,
 } from "@/lib/data";
+import { hasPremiumAccess } from "@/lib/membership";
 import type { AgeGroup, GoalKey, UserRole } from "@/lib/app-types";
 import { formatRole } from "@/lib/formatters";
 import { isClerkConfigured } from "@/lib/platform";
+import { stripe, getStripePriceId, getStripeReturnUrl } from "@/lib/stripe";
 
 const validRoles = new Set(roleOptions.map((option) => option.value));
 const validAgeGroups = new Set(ageGroupOptions.map((option) => option.value));
@@ -65,6 +68,8 @@ function revalidateAppShell() {
   revalidatePath("/community");
   revalidatePath("/dashboard");
   revalidatePath("/events");
+  revalidatePath("/membership");
+  revalidatePath("/onboarding");
   revalidatePath("/professionals");
   revalidatePath("/resources");
 }
@@ -123,6 +128,7 @@ export async function signUpAction(formData: FormData) {
     location,
     goals,
     verified: false,
+    onboardingCompleted: false,
   });
 
   if (!user) {
@@ -131,7 +137,11 @@ export async function signUpAction(formData: FormData) {
 
   await establishSession(user.id);
   revalidateAppShell();
-  redirect(buildPath("/dashboard", { message: "Welcome to Guiding Light." }));
+  redirect(
+    buildPath("/onboarding", {
+      message: "Welcome to Guiding Light. Let’s shape your support space.",
+    }),
+  );
 }
 
 export async function signInAction(formData: FormData) {
@@ -200,6 +210,47 @@ export async function updateProfileAction(
   };
 }
 
+export async function completeOnboardingAction(formData: FormData) {
+  const currentUser = await requireCurrentUser();
+  const name = String(formData.get("name") ?? "").trim();
+  const location = String(formData.get("location") ?? "").trim();
+  const role = pickRole(formData.get("role"));
+  const ageGroup = pickAgeGroup(formData.get("ageGroup"));
+  const goals = pickGoals(formData);
+
+  if (!name || !location || !role || !ageGroup || goals.length === 0) {
+    redirect(
+      buildPath("/onboarding", {
+        error: "Please finish each onboarding step before continuing.",
+      }),
+    );
+  }
+
+  const updatedUser = await updateUserProfile(currentUser.id, {
+    name,
+    role,
+    ageGroup,
+    location,
+    goals,
+    onboardingCompleted: true,
+  });
+
+  if (updatedUser) {
+    await syncCurrentClerkMetadata({
+      onboardingCompleted: true,
+      membershipTier: updatedUser.membershipTier,
+      subscriptionStatus: updatedUser.subscriptionStatus,
+    });
+  }
+
+  revalidateAppShell();
+  redirect(
+    buildPath("/dashboard", {
+      message: "Your support space is ready.",
+    }),
+  );
+}
+
 export async function toggleSavedResourceAction(formData: FormData) {
   const currentUser = await requireCurrentUser();
   const resourceId = String(formData.get("resourceId") ?? "");
@@ -212,6 +263,86 @@ export async function toggleSavedResourceAction(formData: FormData) {
   await toggleSavedResource(currentUser.id, resourceId);
   revalidateAppShell();
   redirect(returnTo);
+}
+
+export async function startPremiumCheckoutAction() {
+  const currentUser = await requireCurrentUser();
+
+  if (!currentUser.onboardingCompleted) {
+    redirect(
+      buildPath("/onboarding", {
+        error: "Finish onboarding before starting membership.",
+      }),
+    );
+  }
+
+  if (hasPremiumAccess(currentUser)) {
+    redirect(
+      buildPath("/membership", {
+        message: "Your premium membership is already active.",
+      }),
+    );
+  }
+
+  const priceId = getStripePriceId();
+
+  if (!stripe || !priceId) {
+    redirect(
+      buildPath("/membership", {
+        error: "Membership checkout is still being connected.",
+      }),
+    );
+  }
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "subscription",
+    allow_promotion_codes: true,
+    billing_address_collection: "auto",
+    client_reference_id: currentUser.id,
+    customer: currentUser.stripeCustomerId ?? undefined,
+    customer_email: currentUser.stripeCustomerId ? undefined : currentUser.email,
+    line_items: [{ price: priceId, quantity: 1 }],
+    metadata: {
+      userId: currentUser.id,
+      userEmail: currentUser.email,
+    },
+    subscription_data: {
+      metadata: {
+        userId: currentUser.id,
+      },
+    },
+    success_url: `${getStripeReturnUrl("/membership/success")}?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: getStripeReturnUrl("/membership/cancel"),
+  });
+
+  if (!session.url) {
+    redirect(
+      buildPath("/membership", {
+        error: "We could not open Stripe checkout just yet.",
+      }),
+    );
+  }
+
+  redirect(session.url);
+}
+
+export async function openPremiumBillingPortalAction() {
+  const currentUser = await requireCurrentUser();
+
+  if (!stripe || !currentUser.stripeCustomerId) {
+    redirect(
+      buildPath("/membership", {
+        error: "Your billing portal is not ready yet.",
+      }),
+    );
+  }
+
+  const session = await stripe.billingPortal.sessions.create({
+    customer: currentUser.stripeCustomerId,
+    return_url: getStripeReturnUrl("/membership"),
+  });
+
+  redirect(session.url);
 }
 
 export async function createCommunityPostAction(formData: FormData) {

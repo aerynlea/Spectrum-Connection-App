@@ -14,8 +14,10 @@ import type {
   AuthProvider,
   CommunityPostRecord,
   EventRecord,
+  MembershipTier,
   ProfessionalRecord,
   ResourceRecord,
+  SubscriptionStatus,
   UserRole,
   AgeGroup,
   GoalKey,
@@ -25,11 +27,18 @@ type UserRow = {
   id: string;
   name: string;
   email: string;
+  auth_provider: AuthProvider;
+  external_auth_id: string | null;
   role: UserRole;
   age_group: AgeGroup;
   location: string;
   goals: string;
   verified: number;
+  onboarding_completed: number;
+  membership_tier: MembershipTier;
+  subscription_status: SubscriptionStatus;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
   created_at: string;
 };
 
@@ -124,6 +133,11 @@ export type CreateUserInput = {
   verified?: boolean;
   authProvider?: AuthProvider;
   externalAuthId?: string | null;
+  onboardingCompleted?: boolean;
+  membershipTier?: MembershipTier;
+  subscriptionStatus?: SubscriptionStatus;
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId?: string | null;
 };
 
 export type ProfileUpdateInput = {
@@ -132,13 +146,21 @@ export type ProfileUpdateInput = {
   ageGroup: AgeGroup;
   location: string;
   goals: GoalKey[];
+  onboardingCompleted?: boolean;
+};
+
+export type MembershipUpdateInput = {
+  membershipTier?: MembershipTier;
+  subscriptionStatus?: SubscriptionStatus;
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId?: string | null;
 };
 
 const dataDirectory = process.env.VERCEL
   ? join("/tmp", "guiding-light-data")
   : join(process.cwd(), "data");
 const databasePath = join(dataDirectory, "guiding-light.db");
-const schemaVersion = "2026-04-real-connections";
+const schemaVersion = "2026-04-onboarding-membership";
 
 const globalForDatabase = globalThis as typeof globalThis & {
   guidingLightDb?: DatabaseSync;
@@ -178,7 +200,12 @@ function getDatabase() {
       verified INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
       auth_provider TEXT NOT NULL DEFAULT 'local',
-      external_auth_id TEXT
+      external_auth_id TEXT,
+      onboarding_completed INTEGER NOT NULL DEFAULT 1,
+      membership_tier TEXT NOT NULL DEFAULT 'free',
+      subscription_status TEXT NOT NULL DEFAULT 'inactive',
+      stripe_customer_id TEXT,
+      stripe_subscription_id TEXT
     );
 
     CREATE TABLE IF NOT EXISTS sessions (
@@ -297,9 +324,45 @@ function ensureUserColumns(database: DatabaseSync) {
     database.exec("ALTER TABLE users ADD COLUMN external_auth_id TEXT");
   }
 
+  if (!columnNames.has("onboarding_completed")) {
+    database.exec(
+      "ALTER TABLE users ADD COLUMN onboarding_completed INTEGER NOT NULL DEFAULT 1",
+    );
+  }
+
+  if (!columnNames.has("membership_tier")) {
+    database.exec(
+      "ALTER TABLE users ADD COLUMN membership_tier TEXT NOT NULL DEFAULT 'free'",
+    );
+  }
+
+  if (!columnNames.has("subscription_status")) {
+    database.exec(
+      "ALTER TABLE users ADD COLUMN subscription_status TEXT NOT NULL DEFAULT 'inactive'",
+    );
+  }
+
+  if (!columnNames.has("stripe_customer_id")) {
+    database.exec("ALTER TABLE users ADD COLUMN stripe_customer_id TEXT");
+  }
+
+  if (!columnNames.has("stripe_subscription_id")) {
+    database.exec("ALTER TABLE users ADD COLUMN stripe_subscription_id TEXT");
+  }
+
   database.exec(`
     CREATE UNIQUE INDEX IF NOT EXISTS users_external_auth_id_idx
     ON users (external_auth_id)
+  `);
+
+  database.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS users_stripe_customer_id_idx
+    ON users (stripe_customer_id)
+  `);
+
+  database.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS users_stripe_subscription_id_idx
+    ON users (stripe_subscription_id)
   `);
 }
 
@@ -377,11 +440,18 @@ function toUser(row: UserRow): AppUser {
     id: row.id,
     name: row.name,
     email: row.email,
+    authProvider: row.auth_provider,
+    externalAuthId: row.external_auth_id,
     role: row.role,
     ageGroup: row.age_group,
     location: row.location,
     goals: parseJson<GoalKey[]>(row.goals, []),
     verified: Boolean(row.verified),
+    onboardingCompleted: Boolean(row.onboarding_completed),
+    membershipTier: row.membership_tier,
+    subscriptionStatus: row.subscription_status,
+    stripeCustomerId: row.stripe_customer_id,
+    stripeSubscriptionId: row.stripe_subscription_id,
     createdAt: row.created_at,
   };
 }
@@ -646,7 +716,7 @@ export function getStats() {
 export function getUserByEmail(email: string) {
   const row = database()
     .prepare(
-      "SELECT id, name, email, role, age_group, location, goals, verified, created_at FROM users WHERE lower(email) = lower(?)",
+      "SELECT id, name, email, auth_provider, external_auth_id, role, age_group, location, goals, verified, onboarding_completed, membership_tier, subscription_status, stripe_customer_id, stripe_subscription_id, created_at FROM users WHERE lower(email) = lower(?)",
     )
     .get(email) as UserRow | undefined;
 
@@ -656,7 +726,7 @@ export function getUserByEmail(email: string) {
 export function getUserByExternalAuthId(externalAuthId: string) {
   const row = database()
     .prepare(
-      "SELECT id, name, email, role, age_group, location, goals, verified, created_at FROM users WHERE external_auth_id = ?",
+      "SELECT id, name, email, auth_provider, external_auth_id, role, age_group, location, goals, verified, onboarding_completed, membership_tier, subscription_status, stripe_customer_id, stripe_subscription_id, created_at FROM users WHERE external_auth_id = ?",
     )
     .get(externalAuthId) as UserRow | undefined;
 
@@ -674,7 +744,7 @@ export function getUserAuthByEmail(email: string) {
 export function getUserById(userId: string) {
   const row = database()
     .prepare(
-      "SELECT id, name, email, role, age_group, location, goals, verified, created_at FROM users WHERE id = ?",
+      "SELECT id, name, email, auth_provider, external_auth_id, role, age_group, location, goals, verified, onboarding_completed, membership_tier, subscription_status, stripe_customer_id, stripe_subscription_id, created_at FROM users WHERE id = ?",
     )
     .get(userId) as UserRow | undefined;
 
@@ -698,8 +768,13 @@ export function createUser(input: CreateUserInput) {
       verified,
       created_at,
       auth_provider,
-      external_auth_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      external_auth_id,
+      onboarding_completed,
+      membership_tier,
+      subscription_status,
+      stripe_customer_id,
+      stripe_subscription_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     userId,
     input.name,
@@ -713,6 +788,11 @@ export function createUser(input: CreateUserInput) {
     createdAt,
     input.authProvider ?? "local",
     input.externalAuthId ?? null,
+    (input.onboardingCompleted ?? true) ? 1 : 0,
+    input.membershipTier ?? "free",
+    input.subscriptionStatus ?? "inactive",
+    input.stripeCustomerId ?? null,
+    input.stripeSubscriptionId ?? null,
   );
 
   return getUserById(userId);
@@ -761,13 +841,28 @@ export function upsertHostedUser(input: {
     verified: false,
     authProvider: "clerk",
     externalAuthId: input.externalAuthId,
+    onboardingCompleted: false,
   });
 }
 
 export function updateUserProfile(userId: string, input: ProfileUpdateInput) {
+  const shouldUpdateOnboarding = Object.prototype.hasOwnProperty.call(
+    input,
+    "onboardingCompleted",
+  );
+
   database().prepare(`
     UPDATE users
-    SET name = ?, role = ?, age_group = ?, location = ?, goals = ?
+    SET
+      name = ?,
+      role = ?,
+      age_group = ?,
+      location = ?,
+      goals = ?,
+      onboarding_completed = CASE
+        WHEN ? THEN ?
+        ELSE onboarding_completed
+      END
     WHERE id = ?
   `).run(
     input.name,
@@ -775,6 +870,45 @@ export function updateUserProfile(userId: string, input: ProfileUpdateInput) {
     input.ageGroup,
     input.location,
     JSON.stringify(input.goals),
+    shouldUpdateOnboarding ? 1 : 0,
+    input.onboardingCompleted ? 1 : 0,
+    userId,
+  );
+
+  return getUserById(userId);
+}
+
+export function updateUserMembership(userId: string, input: MembershipUpdateInput) {
+  const shouldUpdateCustomer = Object.prototype.hasOwnProperty.call(
+    input,
+    "stripeCustomerId",
+  );
+  const shouldUpdateSubscription = Object.prototype.hasOwnProperty.call(
+    input,
+    "stripeSubscriptionId",
+  );
+
+  database().prepare(`
+    UPDATE users
+    SET
+      membership_tier = COALESCE(?, membership_tier),
+      subscription_status = COALESCE(?, subscription_status),
+      stripe_customer_id = CASE
+        WHEN ? THEN ?
+        ELSE stripe_customer_id
+      END,
+      stripe_subscription_id = CASE
+        WHEN ? THEN ?
+        ELSE stripe_subscription_id
+      END
+    WHERE id = ?
+  `).run(
+    input.membershipTier ?? null,
+    input.subscriptionStatus ?? null,
+    shouldUpdateCustomer ? 1 : 0,
+    shouldUpdateCustomer ? input.stripeCustomerId ?? null : null,
+    shouldUpdateSubscription ? 1 : 0,
+    shouldUpdateSubscription ? input.stripeSubscriptionId ?? null : null,
     userId,
   );
 

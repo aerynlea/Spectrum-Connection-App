@@ -424,6 +424,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           <Link className="button-secondary" href="/community">
             See community conversations
           </Link>
+          <Link className="button-secondary" href="/membership">
+            Explore membership
+          </Link>
         </div>
       </section>
     </div>

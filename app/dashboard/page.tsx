@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
+import { redirect } from "next/navigation";
 
+import { MembershipActions } from "@/components/membership-actions";
 import { ProfileForm } from "@/components/profile-form";
 import { SaveResourceForm } from "@/components/save-resource-form";
 import { SectionHeading } from "@/components/section-heading";
@@ -20,9 +22,16 @@ import {
   formatRole,
 } from "@/lib/formatters";
 import { partitionByLocation } from "@/lib/location";
+import {
+  buildPremiumRoadmap,
+  getMembershipDescription,
+  getSubscriptionStatusLabel,
+  hasPremiumAccess,
+} from "@/lib/membership";
 import { buildRecommendations } from "@/lib/recommendations";
 import { getQueryMessage, type PageSearchParams } from "@/lib/search-params";
 import { profileQuotes } from "@/lib/site-data";
+import { isStripeConfigured } from "@/lib/platform";
 
 type DashboardPageProps = {
   searchParams?: PageSearchParams;
@@ -34,6 +43,10 @@ export default async function DashboardPage({
   noStore();
 
   const currentUser = await requireCurrentUser();
+  if (!currentUser.onboardingCompleted) {
+    redirect("/onboarding");
+  }
+
   const message = await getQueryMessage(searchParams, "message");
   const error = await getQueryMessage(searchParams, "error");
   const resources = await listResources(currentUser.id);
@@ -42,6 +55,8 @@ export default async function DashboardPage({
   const recentPosts = await listCommunityPosts(3);
   const recommendations = buildRecommendations(currentUser, resources, events);
   const eventSections = partitionByLocation(recommendations.events, currentUser.location);
+  const premiumRoadmap = buildPremiumRoadmap(currentUser);
+  const premiumAccess = hasPremiumAccess(currentUser);
 
   return (
     <div className="page">
@@ -77,6 +92,56 @@ export default async function DashboardPage({
           <strong>{recommendations.events.length}</strong>
           <span>Upcoming events</span>
         </article>
+      </section>
+
+      <section className="section split-layout">
+        <div className="section-panel section-panel--accent">
+          <SectionHeading
+            eyebrow="Membership"
+            intro={getMembershipDescription(currentUser)}
+            title={
+              premiumAccess
+                ? "Your premium planning tools are ready."
+                : "Premium can make planning feel steadier."
+            }
+          />
+          <article className="membership-card">
+            <div className="pill-list pill-list--compact">
+              <span className="pill pill--soft">
+                {currentUser.membershipTier === "premium" ? "Premium member" : "Free member"}
+              </span>
+              <span className="pill pill--soft">
+                {getSubscriptionStatusLabel(currentUser.subscriptionStatus)}
+              </span>
+            </div>
+            <p>
+              {premiumAccess
+                ? "Your roadmap below is tailored around the goals you chose, so your next steps stay easier to return to."
+                : "Upgrade whenever you want a more guided planning layer built around your goals, life stage, and saved support."}
+            </p>
+            <MembershipActions
+              canManage={premiumAccess && Boolean(currentUser.stripeCustomerId)}
+              checkoutDisabled={!isStripeConfigured}
+            />
+          </article>
+        </div>
+
+        <div className="section-panel">
+          <SectionHeading
+            eyebrow="Premium roadmap"
+            intro="A sample of the guided next-step planning premium membership can keep close at hand."
+            title="What premium can help you hold together."
+          />
+          <div className="stack-list">
+            {premiumRoadmap.map((item) => (
+                <article className="sub-card" key={item.goal}>
+                <p className="feature-label">{formatGoal(item.goal)}</p>
+                <h3>{item.title}</h3>
+                <p>{item.detail}</p>
+              </article>
+            ))}
+          </div>
+        </div>
       </section>
 
       <section className="section split-layout">

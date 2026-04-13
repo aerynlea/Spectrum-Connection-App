@@ -63,6 +63,15 @@ export async function updateUserProfile(
     : (await getLocal()).updateUserProfile(userId, input);
 }
 
+export async function updateUserMembership(
+  userId: string,
+  input: Parameters<LocalModule["updateUserMembership"]>[1],
+) {
+  return isNeonConfigured
+    ? (await getHosted()).updateUserMembership(userId, input)
+    : (await getLocal()).updateUserMembership(userId, input);
+}
+
 export async function createSession(userId: string, expiresAt: string) {
   return isNeonConfigured
     ? (await getHosted()).createSession(userId, expiresAt)

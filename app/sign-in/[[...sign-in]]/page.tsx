@@ -11,7 +11,13 @@ export default function SignInPage() {
   return (
     <div className="page auth-hosted-shell">
       <section className="auth-hosted-card">
-        <SignIn path="/sign-in" routing="path" signUpUrl="/sign-up" />
+        <SignIn
+          fallbackRedirectUrl="/dashboard"
+          path="/sign-in"
+          routing="path"
+          signUpFallbackRedirectUrl="/onboarding"
+          signUpUrl="/sign-up"
+        />
       </section>
     </div>
   );

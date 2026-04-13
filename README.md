@@ -1,160 +1,102 @@
-# Guiding Light  
-Where Every Journey Connects
+# Guiding Light
 
----
+Guiding Light is a calm, community-centered support app for autistic people, parents, caregivers, and trusted professionals. It brings together real resources, supportive conversation, guided planning, and regional event discovery in one place.
 
-## Overview
+## What is in the app
 
-Guiding Light is a community-centered support and resource-sharing platform designed for individuals on the Autism Spectrum and their families.
+- profile-based onboarding
+- community message board
+- resource and event discovery
+- guided California and outings support pages
+- global voices and representation content
+- local auth fallback plus Clerk-ready hosted auth
+- premium membership UI with Stripe checkout and webhook support
 
-The app brings together structured community discussions, trusted resources, and personalized support tools into a calm, accessible experience.
+## Local setup
 
----
+1. Install dependencies.
 
-## The Problem
-
-Many individuals and families navigating autism support face:
-
-- fragmented and hard-to-find resources  
-- inconsistent or unsafe community spaces  
-- limited guidance across different life stages  
-- feelings of isolation during important decisions  
-
----
-
-## The Solution
-
-Guiding Light provides a centralized platform that combines:
-
-- structured community spaces  
-- accessible resource discovery  
-- safety-focused design  
-- personalized user experiences  
-
----
-
-## Mission
-
-To create a safe, inclusive digital space where autism-related journeys are supported through connection, clarity, and trusted guidance.
-
----
-
-## Core Principles
-
-- Clarity over clutter  
-- Support over noise  
-- Accessibility by default  
-- Trust and safety first  
-- Support across all life stages  
-
----
-
-## Features
-
-### Current
-- User authentication  
-- Community posting system  
-- Topic-based discussions  
-- Safety-focused participation design  
-
-### In Progress
-- Resource discovery system  
-- Event listings  
-- Profile personalization  
-- Saved content  
-
----
-
-## Community Experience
-
-Users can:
-
-- create posts  
-- share experiences or questions  
-- participate in topic-based discussions  
-- engage in a moderated and structured environment  
-
----
-
-## Resource System (In Development)
-
-The resource feature will allow users to:
-
-- search for support services  
-- filter by category and life stage  
-- access verified resources  
-- discover relevant help more easily  
-
----
-
-## Accessibility Goals
-
-- simple and predictable navigation  
-- minimal cognitive load  
-- readable layouts and spacing  
-- calm, non-overstimulating visuals  
-- inclusive and supportive language  
-
----
-
-## Safety Commitments
-
-- moderated community expectations  
-- clear participation guidelines  
-- reporting tools  
-- privacy-aware user experience  
-- accountable posting system  
-
----
-
-## Tech Stack
-
-Frontend: Next.js (App Router)  
-Language: TypeScript  
-Backend: Server Actions / API Routes  
-Database: SQLite  
-Authentication: Custom auth system  
-Styling: Component-based CSS  
-
----
-
-## Getting Started
-
-Clone the repository:
-
-git clone <your-repo-url>
-
-Install dependencies:
-
+```bash
 npm install
+```
 
-Run development server:
+2. Copy the example environment file and fill in the values you want to use.
 
+```bash
+cp .env.example .env.local
+```
+
+3. Start the app.
+
+```bash
 npm run dev
+```
 
----
+The local app runs at `http://localhost:3000`.
 
-## Project Status
+## Environment variables
 
-Active development.
+### Core
 
-Current focus: building core support systems including community and resource discovery.
+- `DATABASE_URL`
+- `SESSION_SECRET`
+- `NEXT_PUBLIC_APP_URL`
 
----
+### Clerk
 
-## Long-Term Vision
+- `CLERK_SECRET_KEY`
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+- `NEXT_PUBLIC_CLERK_SIGN_IN_URL`
+- `NEXT_PUBLIC_CLERK_SIGN_UP_URL`
 
-Guiding Light aims to become a trusted support platform that reduces isolation, improves access to help, and provides meaningful connection for individuals and families navigating autism.
+### Stripe
 
----
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_PRICE_ID_PREMIUM`
 
-## Why This App Matters
+If Clerk keys are missing, the app uses the built-in local auth flow. If Stripe values are missing, the membership page stays visible but checkout is disabled gracefully.
 
-Support is not just about information.
+## Stripe webhook
 
-It is about feeling:
-- understood  
-- guided  
-- connected  
+Point Stripe webhooks to:
 
-Guiding Light is being built to provide all three.
+```text
+/api/stripe/webhook
+```
+
+Recommended events:
+
+- `checkout.session.completed`
+- `customer.subscription.created`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+
+## Clerk notes
+
+For a production Clerk launch, use production Clerk keys and connect the real production domain in Clerk. The app is already set up to:
+
+- send new Clerk sign-ups into onboarding
+- send returning Clerk sign-ins to the dashboard
+- sync onboarding and membership status into Clerk public metadata
+
+## Premium membership flow
+
+The premium membership flow currently includes:
+
+- a dedicated membership page
+- Stripe Checkout for subscriptions
+- Stripe billing portal access
+- saved premium membership state in the app database
+- dashboard membership status and premium roadmap UI
+
+## Verification
+
+Run:
+
+```bash
+npm run lint
+npm run build
+```
+
+If you are working in a dirty local workspace, existing unrelated local edits may need to be resolved before full-project lint and build pass cleanly.

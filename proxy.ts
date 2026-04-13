@@ -4,7 +4,7 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 import { isClerkConfigured } from "@/lib/platform";
 
-const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
+const isProtectedRoute = createRouteMatcher(["/dashboard(.*)", "/onboarding(.*)"]);
 
 const clerkProxy = clerkMiddleware(async (auth, request) => {
   if (isProtectedRoute(request)) {

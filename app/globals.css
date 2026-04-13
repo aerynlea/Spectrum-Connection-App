@@ -1081,6 +1081,17 @@ a {
   box-shadow: none;
 }
 
+.feature-card--premium {
+  background:
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--sky) 12%, var(--surface-strong)) 0%,
+      color-mix(in srgb, var(--secondary) 12%, var(--surface-strong)) 48%,
+      color-mix(in srgb, var(--coral) 10%, var(--surface-strong)) 100%
+    );
+  border-color: color-mix(in srgb, var(--secondary) 30%, var(--border));
+}
+
 .term-card h3 {
   font-size: 1.28rem;
   line-height: 1.28;
@@ -1131,6 +1142,32 @@ a {
 .event-card,
 .sub-card {
   padding: 1.25rem;
+}
+
+.membership-card {
+  display: grid;
+  gap: 1rem;
+  padding: 1.5rem;
+  border: 1px solid color-mix(in srgb, var(--secondary) 28%, var(--border));
+  border-radius: calc(var(--rounded) - 6px);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-strong) 92%, white),
+      color-mix(in srgb, var(--surface-strong) 88%, var(--surface-tint))
+    );
+  box-shadow: var(--shadow);
+}
+
+.membership-card h3 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.membership-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
 }
 
 .thread-card__meta,

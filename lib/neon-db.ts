@@ -16,8 +16,10 @@ import type {
   CommunityReplyRecord,
   EventRecord,
   GoalKey,
+  MembershipTier,
   ProfessionalRecord,
   ResourceRecord,
+  SubscriptionStatus,
   UserRole,
 } from "@/lib/app-types";
 
@@ -25,11 +27,18 @@ type UserRow = {
   id: string;
   name: string;
   email: string;
+  auth_provider: AuthProvider;
+  external_auth_id: string | null;
   role: UserRole;
   age_group: AgeGroup;
   location: string;
   goals: string;
   verified: boolean;
+  onboarding_completed: boolean;
+  membership_tier: MembershipTier;
+  subscription_status: SubscriptionStatus;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
   created_at: string;
 };
 
@@ -112,6 +121,11 @@ export type CreateUserInput = {
   verified?: boolean;
   authProvider?: AuthProvider;
   externalAuthId?: string | null;
+  onboardingCompleted?: boolean;
+  membershipTier?: MembershipTier;
+  subscriptionStatus?: SubscriptionStatus;
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId?: string | null;
 };
 
 export type ProfileUpdateInput = {
@@ -120,6 +134,14 @@ export type ProfileUpdateInput = {
   ageGroup: AgeGroup;
   location: string;
   goals: GoalKey[];
+  onboardingCompleted?: boolean;
+};
+
+export type MembershipUpdateInput = {
+  membershipTier?: MembershipTier;
+  subscriptionStatus?: SubscriptionStatus;
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId?: string | null;
 };
 
 const globalForNeon = globalThis as typeof globalThis & {
@@ -153,11 +175,18 @@ function toUser(row: UserRow): AppUser {
     id: row.id,
     name: row.name,
     email: row.email,
+    authProvider: row.auth_provider,
+    externalAuthId: row.external_auth_id,
     role: row.role,
     ageGroup: row.age_group,
     location: row.location,
     goals: parseJson<GoalKey[]>(row.goals, []),
     verified: Boolean(row.verified),
+    onboardingCompleted: Boolean(row.onboarding_completed),
+    membershipTier: row.membership_tier,
+    subscriptionStatus: row.subscription_status,
+    stripeCustomerId: row.stripe_customer_id,
+    stripeSubscriptionId: row.stripe_subscription_id,
     createdAt: row.created_at,
   };
 }
@@ -245,14 +274,56 @@ async function seedHostedDatabase() {
       verified BOOLEAN NOT NULL DEFAULT false,
       created_at TEXT NOT NULL,
       auth_provider TEXT NOT NULL DEFAULT 'local',
-      external_auth_id TEXT
+      external_auth_id TEXT,
+      onboarding_completed BOOLEAN NOT NULL DEFAULT true,
+      membership_tier TEXT NOT NULL DEFAULT 'free',
+      subscription_status TEXT NOT NULL DEFAULT 'inactive',
+      stripe_customer_id TEXT,
+      stripe_subscription_id TEXT
     )
+  `);
+
+  await sql.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN NOT NULL DEFAULT true
+  `);
+
+  await sql.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS membership_tier TEXT NOT NULL DEFAULT 'free'
+  `);
+
+  await sql.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS subscription_status TEXT NOT NULL DEFAULT 'inactive'
+  `);
+
+  await sql.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT
+  `);
+
+  await sql.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT
   `);
 
   await sql.query(`
     CREATE UNIQUE INDEX IF NOT EXISTS users_external_auth_id_idx
     ON users (external_auth_id)
     WHERE external_auth_id IS NOT NULL
+  `);
+
+  await sql.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS users_stripe_customer_id_idx
+    ON users (stripe_customer_id)
+    WHERE stripe_customer_id IS NOT NULL
+  `);
+
+  await sql.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS users_stripe_subscription_id_idx
+    ON users (stripe_subscription_id)
+    WHERE stripe_subscription_id IS NOT NULL
   `);
 
   await sql.query(`
@@ -560,7 +631,23 @@ export async function getUserByEmail(email: string) {
   const sql = getSql();
 
   const [row] = (await sql`
-    SELECT id, name, email, role, age_group, location, goals, verified, created_at
+    SELECT
+      id,
+      name,
+      email,
+      auth_provider,
+      external_auth_id,
+      role,
+      age_group,
+      location,
+      goals,
+      verified,
+      onboarding_completed,
+      membership_tier,
+      subscription_status,
+      stripe_customer_id,
+      stripe_subscription_id,
+      created_at
     FROM users
     WHERE lower(email) = lower(${email})
   `) as UserRow[];
@@ -573,7 +660,23 @@ export async function getUserByExternalAuthId(externalAuthId: string) {
   const sql = getSql();
 
   const [row] = (await sql`
-    SELECT id, name, email, role, age_group, location, goals, verified, created_at
+    SELECT
+      id,
+      name,
+      email,
+      auth_provider,
+      external_auth_id,
+      role,
+      age_group,
+      location,
+      goals,
+      verified,
+      onboarding_completed,
+      membership_tier,
+      subscription_status,
+      stripe_customer_id,
+      stripe_subscription_id,
+      created_at
     FROM users
     WHERE external_auth_id = ${externalAuthId}
   `) as UserRow[];
@@ -601,7 +704,23 @@ export async function getUserById(userId: string) {
   const sql = getSql();
 
   const [row] = (await sql`
-    SELECT id, name, email, role, age_group, location, goals, verified, created_at
+    SELECT
+      id,
+      name,
+      email,
+      auth_provider,
+      external_auth_id,
+      role,
+      age_group,
+      location,
+      goals,
+      verified,
+      onboarding_completed,
+      membership_tier,
+      subscription_status,
+      stripe_customer_id,
+      stripe_subscription_id,
+      created_at
     FROM users
     WHERE id = ${userId}
   `) as UserRow[];
@@ -629,7 +748,12 @@ export async function createUser(input: CreateUserInput) {
       verified,
       created_at,
       auth_provider,
-      external_auth_id
+      external_auth_id,
+      onboarding_completed,
+      membership_tier,
+      subscription_status,
+      stripe_customer_id,
+      stripe_subscription_id
     ) VALUES (
       ${userId},
       ${input.name},
@@ -642,7 +766,12 @@ export async function createUser(input: CreateUserInput) {
       ${input.verified ?? false},
       ${createdAt},
       ${input.authProvider ?? "local"},
-      ${input.externalAuthId ?? null}
+      ${input.externalAuthId ?? null},
+      ${input.onboardingCompleted ?? true},
+      ${input.membershipTier ?? "free"},
+      ${input.subscriptionStatus ?? "inactive"},
+      ${input.stripeCustomerId ?? null},
+      ${input.stripeSubscriptionId ?? null}
     )
   `;
 
@@ -693,12 +822,18 @@ export async function upsertHostedUser(input: {
     verified: false,
     authProvider: "clerk",
     externalAuthId: input.externalAuthId,
+    onboardingCompleted: false,
   });
 }
 
 export async function updateUserProfile(userId: string, input: ProfileUpdateInput) {
   await ensureHostedDatabase();
   const sql = getSql();
+
+  const shouldUpdateOnboarding = Object.prototype.hasOwnProperty.call(
+    input,
+    "onboardingCompleted",
+  );
 
   await sql`
     UPDATE users
@@ -707,7 +842,43 @@ export async function updateUserProfile(userId: string, input: ProfileUpdateInpu
       role = ${input.role},
       age_group = ${input.ageGroup},
       location = ${input.location},
-      goals = ${JSON.stringify(input.goals)}
+      goals = ${JSON.stringify(input.goals)},
+      onboarding_completed = CASE
+        WHEN ${shouldUpdateOnboarding} THEN ${input.onboardingCompleted ?? false}
+        ELSE onboarding_completed
+      END
+    WHERE id = ${userId}
+  `;
+
+  return getUserById(userId);
+}
+
+export async function updateUserMembership(userId: string, input: MembershipUpdateInput) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  const shouldUpdateCustomer = Object.prototype.hasOwnProperty.call(
+    input,
+    "stripeCustomerId",
+  );
+  const shouldUpdateSubscription = Object.prototype.hasOwnProperty.call(
+    input,
+    "stripeSubscriptionId",
+  );
+
+  await sql`
+    UPDATE users
+    SET
+      membership_tier = COALESCE(${input.membershipTier ?? null}, membership_tier),
+      subscription_status = COALESCE(${input.subscriptionStatus ?? null}, subscription_status),
+      stripe_customer_id = CASE
+        WHEN ${shouldUpdateCustomer} THEN ${input.stripeCustomerId ?? null}
+        ELSE stripe_customer_id
+      END,
+      stripe_subscription_id = CASE
+        WHEN ${shouldUpdateSubscription} THEN ${input.stripeSubscriptionId ?? null}
+        ELSE stripe_subscription_id
+      END
     WHERE id = ${userId}
   `;
 

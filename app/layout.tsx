@@ -6,7 +6,11 @@ import Script from "next/script";
 
 import { SiteHeader } from "@/components/site-header";
 import { getAppearanceBootstrapScript } from "@/lib/appearance";
-import { isClerkConfigured } from "@/lib/platform";
+import {
+  isClerkConfigured,
+  isClerkDevelopmentInstance,
+  isProductionDeployment,
+} from "@/lib/platform";
 
 import "./globals.css";
 
@@ -51,7 +55,17 @@ export default async function RootLayout({
         <Script id="guiding-light-appearance" strategy="beforeInteractive">
           {getAppearanceBootstrapScript()}
         </Script>
-        {isClerkConfigured ? <ClerkProvider>{appBody}</ClerkProvider> : appBody}
+        {isClerkConfigured ? (
+          <ClerkProvider
+            unsafe_disableDevelopmentModeConsoleWarning={
+              isClerkDevelopmentInstance && !isProductionDeployment
+            }
+          >
+            {appBody}
+          </ClerkProvider>
+        ) : (
+          appBody
+        )}
       </body>
     </html>
   );

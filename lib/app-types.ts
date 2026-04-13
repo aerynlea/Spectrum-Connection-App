@@ -5,6 +5,19 @@ export type UserRole =
 
 export type AuthProvider = "local" | "clerk";
 
+export type MembershipTier = "free" | "premium";
+
+export type SubscriptionStatus =
+  | "inactive"
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "canceled"
+  | "incomplete"
+  | "incomplete_expired"
+  | "unpaid"
+  | "paused";
+
 export type AgeGroup =
   | "early-years"
   | "school-age"
@@ -25,11 +38,18 @@ export type AppUser = {
   id: string;
   name: string;
   email: string;
+  authProvider: AuthProvider;
+  externalAuthId: string | null;
   role: UserRole;
   ageGroup: AgeGroup;
   location: string;
   goals: GoalKey[];
   verified: boolean;
+  onboardingCompleted: boolean;
+  membershipTier: MembershipTier;
+  subscriptionStatus: SubscriptionStatus;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
   createdAt: string;
 };
 

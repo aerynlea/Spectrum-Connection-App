@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 
 import {
   appearanceModeOptions,
@@ -19,9 +19,12 @@ type AppearanceControlsProps = {
 };
 
 const mediaQuery = "(prefers-color-scheme: dark)";
-const appearanceSubscribers = new Set<() => void>();
 
 function resolveMode(mode: AppearanceMode) {
+  if (typeof window === "undefined") {
+    return "light";
+  }
+
   if (mode === "system") {
     return window.matchMedia(mediaQuery).matches ? "dark" : "light";
   }
@@ -34,6 +37,10 @@ function applyAppearance(
   palette: AppearancePalette,
   persist = true,
 ) {
+  if (typeof document === "undefined") {
+    return;
+  }
+
   const resolvedMode = resolveMode(mode);
   const root = document.documentElement;
 
@@ -42,7 +49,7 @@ function applyAppearance(
   root.dataset.themeResolved = resolvedMode;
   root.style.colorScheme = resolvedMode;
 
-  if (!persist) {
+  if (!persist || typeof window === "undefined") {
     return;
   }
 
@@ -71,18 +78,6 @@ function readAppearance() {
     mode,
     palette,
   };
-}
-
-function subscribeToAppearance(callback: () => void) {
-  appearanceSubscribers.add(callback);
-
-  return () => {
-    appearanceSubscribers.delete(callback);
-  };
-}
-
-function notifyAppearanceChange() {
-  appearanceSubscribers.forEach((callback) => callback());
 }
 
 function AppearancePanelContent({
@@ -160,26 +155,49 @@ function AppearancePanelContent({
 export function AppearanceControls({
   variant = "popover",
 }: AppearanceControlsProps) {
-  const appearance = useSyncExternalStore(
-    subscribeToAppearance,
-    readAppearance,
-    () => defaultAppearance,
-  );
-  const { mode, palette } = appearance;
+  const [appearance, setAppearance] = useState<{
+    mode: AppearanceMode;
+    palette: AppearancePalette;
+  }>(defaultAppearance);
 
   useEffect(() => {
-    applyAppearance(mode, palette, false);
-  }, [mode, palette]);
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const handleStorage = (event: StorageEvent) => {
+      if (
+        event.key &&
+        event.key !== appearanceStorageKeys.mode &&
+        event.key !== appearanceStorageKeys.palette
+      ) {
+        return;
+      }
+
+      const nextAppearance = readAppearance();
+      setAppearance((current) =>
+        current.mode === nextAppearance.mode && current.palette === nextAppearance.palette
+          ? current
+          : nextAppearance,
+      );
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
 
   useEffect(() => {
-    if (mode !== "system") {
+    applyAppearance(appearance.mode, appearance.palette, false);
+  }, [appearance.mode, appearance.palette]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || appearance.mode !== "system") {
       return undefined;
     }
 
     const media = window.matchMedia(mediaQuery);
     const syncSystemPreference = () => {
-      applyAppearance("system", palette, false);
-      notifyAppearanceChange();
+      applyAppearance("system", appearance.palette, false);
     };
 
     syncSystemPreference();
@@ -191,17 +209,37 @@ export function AppearanceControls({
 
     media.addListener(syncSystemPreference);
     return () => media.removeListener(syncSystemPreference);
-  }, [mode, palette]);
+  }, [appearance.mode, appearance.palette]);
 
   const handleModeChange = (nextMode: AppearanceMode) => {
-    applyAppearance(nextMode, palette);
-    notifyAppearanceChange();
+    setAppearance((current) => {
+      if (current.mode === nextMode) {
+        return current;
+      }
+
+      applyAppearance(nextMode, current.palette);
+      return {
+        ...current,
+        mode: nextMode,
+      };
+    });
   };
 
   const handlePaletteChange = (nextPalette: AppearancePalette) => {
-    applyAppearance(mode, nextPalette);
-    notifyAppearanceChange();
+    setAppearance((current) => {
+      if (current.palette === nextPalette) {
+        return current;
+      }
+
+      applyAppearance(current.mode, nextPalette);
+      return {
+        ...current,
+        palette: nextPalette,
+      };
+    });
   };
+
+  const { mode, palette } = appearance;
 
   if (variant === "inline") {
     return (
