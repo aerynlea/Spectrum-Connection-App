@@ -91,6 +91,32 @@ export default async function ResourcesPage({
 
       <section className="section">
         <SectionHeading
+          eyebrow="Guided pages"
+          intro="If you would rather begin with a calmer path, these pages bring common questions together for you."
+          title="Open a page built around one need at a time."
+        />
+        <div className="card-grid card-grid--two">
+          <Link className="feature-card" href="/california-guide">
+            <p className="feature-label">California guide</p>
+            <h3>Follow school, insurance, and caregiver steps in one place.</h3>
+            <p>
+              Use a simpler California-focused page for IEPs, evaluations,
+              insurance questions, and family support links.
+            </p>
+          </Link>
+          <Link className="feature-card" href="/outings">
+            <p className="feature-label">Outings guide</p>
+            <h3>Plan family outings with more predictability and less pressure.</h3>
+            <p>
+              Open a calmer planning page for theme parks, playplaces, quiet
+              spaces, and travel-friendly sensory support.
+            </p>
+          </Link>
+        </div>
+      </section>
+
+      <section className="section">
+        <SectionHeading
           eyebrow="Start here"
           intro="Begin with the kind of help that feels most useful today."
           title="Choose the support you need right now."

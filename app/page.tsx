@@ -296,6 +296,14 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             </Link>
           ))}
         </div>
+        <div className="button-row">
+          <Link className="button-secondary" href="/california-guide">
+            Open the California parent guide
+          </Link>
+          <Link className="button-secondary" href="/outings">
+            Plan a calmer outing
+          </Link>
+        </div>
       </section>
 
       <section className="section">
