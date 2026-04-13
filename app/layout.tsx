@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { ClerkProvider } from "@clerk/nextjs";
+import Script from "next/script";
 
 import { SiteHeader } from "@/components/site-header";
+import { getAppearanceBootstrapScript } from "@/lib/appearance";
 import { isClerkConfigured } from "@/lib/platform";
 
 import "./globals.css";
@@ -44,8 +46,11 @@ export default async function RootLayout({
   );
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body>
+        <Script id="guiding-light-appearance" strategy="beforeInteractive">
+          {getAppearanceBootstrapScript()}
+        </Script>
         {isClerkConfigured ? <ClerkProvider>{appBody}</ClerkProvider> : appBody}
       </body>
     </html>

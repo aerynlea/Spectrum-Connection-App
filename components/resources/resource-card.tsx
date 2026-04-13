@@ -1,29 +1,74 @@
 import Link from "next/link";
 
-import type { Resource } from "@/lib/resources/types";
+import { SaveResourceForm } from "@/components/save-resource-form";
+import { formatAgeGroup } from "@/lib/formatters";
+import type { DirectoryResource } from "@/lib/resources";
 
 type ResourceCardProps = {
-  resource: Resource;
+  resource: DirectoryResource;
+  returnTo: string;
+  showSaveAction?: boolean;
 };
 
-export function ResourceCard({ resource }: ResourceCardProps) {
+function formatAudienceTag(value: string) {
+  return value.replace(/^Parents and caregivers$/i, "Caregivers");
+}
+
+export function ResourceCard({
+  resource,
+  returnTo,
+  showSaveAction = true,
+}: ResourceCardProps) {
   return (
-    <Link href={`/resources/${resource.id}`} className="thread-card">
-      <div className="thread-card__meta">
+    <article className="resource-card">
+      <div className="resource-card__header">
         <div>
-          <h3>{resource.title}</h3>
-          <p>{resource.location}</p>
+          <h2>{resource.title}</h2>
+          <p>
+            {resource.collectionName} • {resource.organization}
+          </p>
         </div>
         <span className="tag-chip">
-          {resource.verified ? "Verified" : "Shared"}
+          {resource.verified ? "Verified" : "Community Shared"}
         </span>
       </div>
 
-      <p>{resource.description}</p>
+      <p>{resource.summary}</p>
 
-      <p className="meta-copy">
-        {resource.category} • {resource.ageGroup}
-      </p>
-    </Link>
+      <div className="pill-list pill-list--compact">
+        <span className="pill pill--soft">{resource.category}</span>
+        <span className="pill pill--soft">
+          {resource.ageGroup === "all" ? "All ages" : formatAgeGroup(resource.ageGroup)}
+        </span>
+        <span className="pill pill--soft">{formatAudienceTag(resource.audience)}</span>
+      </div>
+
+      <div className="resource-meta">
+        <div className="resource-meta__group">
+          <span>{resource.locationScope}</span>
+          <span>{resource.savedCount} saves</span>
+        </div>
+        <div className="resource-actions">
+          <Link className="text-link" href={`/resources/${resource.id}`}>
+            See details
+          </Link>
+          <Link
+            className="text-link"
+            href={resource.href}
+            rel="noreferrer"
+            target="_blank"
+          >
+            Official site
+          </Link>
+          {showSaveAction ? (
+            <SaveResourceForm
+              isSaved={resource.isSaved}
+              resourceId={resource.id}
+              returnTo={returnTo}
+            />
+          ) : null}
+        </div>
+      </div>
+    </article>
   );
 }

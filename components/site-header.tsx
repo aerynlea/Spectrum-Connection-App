@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 
+import { AppearanceControls } from "@/components/appearance-controls";
 import { BrandMark } from "@/components/brand-mark";
 import { ClerkUserButton } from "@/components/clerk-user-button";
 import { SignOutForm } from "@/components/sign-out-form";
@@ -56,6 +57,10 @@ export async function SiteHeader() {
 
               <div className="mobile-nav__divider" />
 
+              <AppearanceControls variant="inline" />
+
+              <div className="mobile-nav__divider" />
+
               <div className="mobile-nav__group mobile-nav__group--actions">
                 {currentUser ? (
                   <>
@@ -87,6 +92,7 @@ export async function SiteHeader() {
               {item.label}
             </Link>
           ))}
+          <AppearanceControls variant="popover" />
           {currentUser ? (
             <>
               <Link className="nav-link nav-link--account" href="/dashboard">

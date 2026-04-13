@@ -10,6 +10,7 @@ import { getStats, listCommunityPosts, listEvents, listResources } from "@/lib/d
 import { formatMonthDay } from "@/lib/formatters";
 import { isClerkConfigured } from "@/lib/platform";
 import { buildRecommendations } from "@/lib/recommendations";
+import { getResourceQuickStartSummaries } from "@/lib/resources";
 import { getQueryMessage, type PageSearchParams } from "@/lib/search-params";
 import {
   ageTracks,
@@ -35,6 +36,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const recommendations = currentUser
     ? buildRecommendations(currentUser, resources, events)
     : null;
+  const digitalQuickStarts = getResourceQuickStartSummaries(resources);
 
   return (
     <div className="page">
@@ -243,6 +245,32 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               width={1200}
             />
           </article>
+        </div>
+      </section>
+
+      <section className="section">
+        <SectionHeading
+          eyebrow="At-Home Support"
+          intro="These newer sections bring together the kinds of digital supports families often search for across five different tabs."
+          title="Play, learn, watch, and handle practical next steps in one place."
+        />
+        <div className="card-grid card-grid--four">
+          {digitalQuickStarts.map((quickStart) => (
+            <Link
+              className="feature-card"
+              href={{
+                pathname: "/resources",
+                query: { collection: quickStart.collectionName },
+              }}
+              key={quickStart.slug}
+            >
+              <p className="feature-label">
+                {quickStart.eyebrow} • {quickStart.count} links
+              </p>
+              <h3>{quickStart.title}</h3>
+              <p>{quickStart.description}</p>
+            </Link>
+          ))}
         </div>
       </section>
 

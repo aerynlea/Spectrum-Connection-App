@@ -1,40 +1,36 @@
-import type { Resource } from "./types";
+import type { ResourceQuickStart } from "@/lib/resources/types";
 
-export const resources: Resource[] = [
+export const resourceQuickStarts: ResourceQuickStart[] = [
   {
-    id: "speech-therapy-services",
-    title: "Speech Therapy Services",
+    slug: "online-play-community",
+    eyebrow: "Online Play",
+    title: "Gaming spaces that feel more welcoming and interest-led.",
     description:
-      "Local speech therapy support focused on communication development and early intervention needs.",
-    category: "Therapy",
-    ageGroup: "Early Childhood",
-    location: "Local",
-    verified: true,
-    link: "https://example.com/speech-therapy",
-    communityTopics: ["Therapy", "Support", "Practical Tips", "School Support"],
+      "Find autistic-friendly gaming and low-pressure online connection options families can explore from home.",
+    collectionName: "Online Play and Community",
   },
   {
-    id: "parent-support-group",
-    title: "Parent Support Group",
+    slug: "pbs-video-picks",
+    eyebrow: "PBS Picks",
+    title: "Trusted PBS and PBS KIDS videos for regulation, learning, and conversation.",
     description:
-      "A weekly virtual support circle for parents looking for encouragement, practical advice, and shared understanding.",
-    category: "Community",
-    ageGroup: "All Ages",
-    location: "Virtual",
-    verified: true,
-    link: "https://example.com/parent-group",
-    communityTopics: ["Community", "Parent Support", "Support", "Practical Tips"],
+      "Open PBS resources for younger children, family viewing, and autism-related storytelling without hunting across tabs.",
+    collectionName: "PBS and Video Picks",
   },
   {
-    id: "employment-transition-program",
-    title: "Employment Transition Program",
+    slug: "learning-at-home",
+    eyebrow: "Learning",
+    title: "Simple at-home learning links for everyday growth.",
     description:
-      "Career readiness and transition support for autistic young adults entering the workforce.",
-    category: "Employment",
-    ageGroup: "Young Adult",
-    location: "Local",
-    verified: false,
-    link: "https://example.com/employment-program",
-    communityTopics: ["Employment", "Young Adult", "Practical Tips", "Support"],
+      "Keep evidence-informed learning tools and child-friendly educational platforms in one calmer place.",
+    collectionName: "Learning at Home",
+  },
+  {
+    slug: "caregiver-applications",
+    eyebrow: "Caregiver Help",
+    title: "Application and benefits links that help caregivers bring support home.",
+    description:
+      "Jump straight to official caregiver, disability, and family-support programs without needing a separate checklist.",
+    collectionName: "Caregiver Applications",
   },
 ];
