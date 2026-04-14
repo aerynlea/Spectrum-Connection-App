@@ -2,7 +2,7 @@ import type { NextFetchEvent, NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-import { isClerkConfigured } from "@/lib/platform";
+import { getClerkAuthorizedParties, isClerkConfigured } from "@/lib/platform";
 
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)", "/onboarding(.*)"]);
 
@@ -10,6 +10,8 @@ const clerkProxy = clerkMiddleware(async (auth, request) => {
   if (isProtectedRoute(request)) {
     await auth.protect();
   }
+}, {
+  authorizedParties: getClerkAuthorizedParties(),
 });
 
 export function proxy(request: NextRequest, event: NextFetchEvent) {

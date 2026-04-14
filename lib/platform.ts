@@ -1,5 +1,6 @@
 const clerkSecretKey = process.env.CLERK_SECRET_KEY ?? "";
 const clerkPublishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
+const clerkAuthorizedParties = process.env.CLERK_AUTHORIZED_PARTIES ?? "";
 
 const hasClerkKeys = Boolean(clerkSecretKey && clerkPublishableKey);
 export const isClerkDevelopmentInstance =
@@ -26,6 +27,22 @@ export const isStripeWebhookConfigured = Boolean(
   process.env.STRIPE_SECRET_KEY && process.env.STRIPE_WEBHOOK_SECRET,
 );
 
+function toOrigin(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return new URL(value).origin;
+  } catch {
+    try {
+      return new URL(`https://${value}`).origin;
+    } catch {
+      return null;
+    }
+  }
+}
+
 export function getAppUrl() {
   if (process.env.NEXT_PUBLIC_APP_URL) {
     return process.env.NEXT_PUBLIC_APP_URL;
@@ -40,4 +57,41 @@ export function getAppUrl() {
   }
 
   return "http://localhost:3000";
+}
+
+export function getClerkAuthorizedParties() {
+  const authorizedParties = new Set<string>();
+
+  for (const value of clerkAuthorizedParties.split(/[,\n]/)) {
+    const origin = toOrigin(value.trim());
+
+    if (origin) {
+      authorizedParties.add(origin);
+    }
+  }
+
+  const appOrigin = toOrigin(getAppUrl());
+
+  if (appOrigin) {
+    authorizedParties.add(appOrigin);
+  }
+
+  const productionOrigin = toOrigin(process.env.VERCEL_PROJECT_PRODUCTION_URL);
+
+  if (productionOrigin) {
+    authorizedParties.add(productionOrigin);
+  }
+
+  const previewOrigin = toOrigin(process.env.VERCEL_URL);
+
+  if (previewOrigin) {
+    authorizedParties.add(previewOrigin);
+  }
+
+  if (!isProductionDeployment) {
+    authorizedParties.add("http://localhost:3000");
+    authorizedParties.add("http://127.0.0.1:3000");
+  }
+
+  return Array.from(authorizedParties);
 }

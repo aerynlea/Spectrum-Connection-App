@@ -48,6 +48,7 @@ The local app runs at `http://localhost:3000`.
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
 - `NEXT_PUBLIC_CLERK_SIGN_IN_URL`
 - `NEXT_PUBLIC_CLERK_SIGN_UP_URL`
+- `CLERK_AUTHORIZED_PARTIES`
 
 ### Stripe
 
@@ -56,6 +57,33 @@ The local app runs at `http://localhost:3000`.
 - `STRIPE_PRICE_ID_PREMIUM`
 
 If Clerk keys are missing, the app uses the built-in local auth flow. If Stripe values are missing, the membership page stays visible but checkout is disabled gracefully.
+
+## Production launch checklist
+
+For the live site on `https://www.the-guidinglight.com`, set these production values in Vercel before launching public auth and billing:
+
+### Core production values
+
+- `NEXT_PUBLIC_APP_URL=https://www.the-guidinglight.com`
+- `DATABASE_URL=<your Neon production connection string>`
+
+### Clerk production values
+
+- `CLERK_SECRET_KEY=<live Clerk secret key>`
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=<live Clerk publishable key>`
+- `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in`
+- `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up`
+- `CLERK_AUTHORIZED_PARTIES=https://www.the-guidinglight.com,https://the-guidinglight.com`
+
+### Stripe production values
+
+- `STRIPE_SECRET_KEY=<live Stripe secret key>`
+- `STRIPE_WEBHOOK_SECRET=<webhook signing secret>`
+- `STRIPE_PRICE_ID_PREMIUM=<recurring monthly price id>`
+
+After changing any production environment variable in Vercel, redeploy the project so the new values apply to the live deployment.
+
+See [docs/production-launch.md](docs/production-launch.md) for the full step-by-step launch guide.
 
 ## Stripe webhook
 
@@ -79,6 +107,7 @@ For a production Clerk launch, use production Clerk keys and connect the real pr
 - send new Clerk sign-ups into onboarding
 - send returning Clerk sign-ins to the dashboard
 - sync onboarding and membership status into Clerk public metadata
+- restrict Clerk auth to approved origins through `CLERK_AUTHORIZED_PARTIES`
 
 ## Premium membership flow
 
