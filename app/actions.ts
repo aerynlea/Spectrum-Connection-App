@@ -1,9 +1,18 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { clearSession, establishSession, hashPassword, requireCurrentUser, verifyPassword } from "@/lib/auth";
+import {
+  clearSession,
+  establishSession,
+  hashPassword,
+  hashPasswordResetToken,
+  requireCurrentUser,
+  verifyPassword,
+} from "@/lib/auth";
 import { syncCurrentClerkMetadata } from "@/lib/clerk-metadata";
 import {
   ageGroupOptions,
@@ -12,18 +21,25 @@ import {
   roleOptions,
 } from "@/lib/catalog";
 import {
+  createPasswordResetToken,
   createCommunityReply,
   createCommunityPost,
   createUser,
+  deleteExpiredPasswordResetTokens,
+  deleteSessionsForUser,
   getUserAuthByEmail,
   getUserByEmail,
+  getPasswordResetToken,
+  markPasswordResetTokenUsed,
   toggleSavedResource,
+  updateUserPassword,
   updateUserProfile,
 } from "@/lib/data";
+import { sendPasswordResetEmail } from "@/lib/email";
 import { hasPremiumAccess } from "@/lib/membership";
 import type { AgeGroup, GoalKey, UserRole } from "@/lib/app-types";
 import { formatRole } from "@/lib/formatters";
-import { isClerkConfigured } from "@/lib/platform";
+import { getAppUrl, isClerkConfigured } from "@/lib/platform";
 import { stripe, getStripePriceId, getStripeReturnUrl } from "@/lib/stripe";
 
 const validRoles = new Set(roleOptions.map((option) => option.value));
@@ -169,6 +185,138 @@ export async function signInAction(formData: FormData) {
   await establishSession(authRecord.id);
   revalidateAppShell();
   redirect(buildPath("/dashboard", { message: "You are signed in." }));
+}
+
+export async function requestPasswordResetAction(formData: FormData) {
+  if (isClerkConfigured) {
+    redirect("/sign-in");
+  }
+
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+
+  if (!email) {
+    redirect(
+      buildPath("/forgot-password", {
+        error: "Enter the email connected to your account first.",
+      }),
+    );
+  }
+
+  await deleteExpiredPasswordResetTokens();
+
+  const user = await getUserByEmail(email);
+  const authRecord = await getUserAuthByEmail(email);
+
+  if (!user || !authRecord) {
+    redirect(
+      buildPath("/forgot-password", {
+        message:
+          "If that email is in Guiding Light, a reset link will be on the way.",
+      }),
+    );
+  }
+
+  const rawToken = randomBytes(32).toString("hex");
+  const tokenHash = hashPasswordResetToken(rawToken);
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60).toISOString();
+
+  await createPasswordResetToken(user.id, tokenHash, expiresAt);
+
+  const resetUrl = `${getAppUrl()}/reset-password?token=${encodeURIComponent(rawToken)}`;
+  const emailSent = await sendPasswordResetEmail({
+    name: user.name,
+    to: user.email,
+    resetUrl,
+  });
+
+  if (!emailSent && process.env.NODE_ENV !== "production") {
+    redirect(
+      buildPath("/reset-password", {
+        message:
+          "Email delivery is not connected yet, so this development link was opened directly.",
+        token: rawToken,
+      }),
+    );
+  }
+
+  redirect(
+    buildPath("/forgot-password", {
+      message:
+        "If that email is in Guiding Light, a reset link will be on the way.",
+    }),
+  );
+}
+
+export async function resetPasswordAction(formData: FormData) {
+  if (isClerkConfigured) {
+    redirect("/sign-in");
+  }
+
+  const token = String(formData.get("token") ?? "");
+  const password = String(formData.get("password") ?? "");
+  const confirmPassword = String(formData.get("confirmPassword") ?? "");
+
+  if (!token) {
+    redirect(
+      buildPath("/forgot-password", {
+        error: "That reset link is missing or no longer valid.",
+      }),
+    );
+  }
+
+  if (!password || !confirmPassword) {
+    redirect(
+      buildPath("/reset-password", {
+        error: "Enter and confirm your new password.",
+        token,
+      }),
+    );
+  }
+
+  if (password.length < 8) {
+    redirect(
+      buildPath("/reset-password", {
+        error: "Use a password with at least 8 characters.",
+        token,
+      }),
+    );
+  }
+
+  if (password !== confirmPassword) {
+    redirect(
+      buildPath("/reset-password", {
+        error: "Those passwords did not match.",
+        token,
+      }),
+    );
+  }
+
+  await deleteExpiredPasswordResetTokens();
+
+  const tokenRecord = await getPasswordResetToken(hashPasswordResetToken(token));
+
+  if (
+    !tokenRecord ||
+    tokenRecord.used_at ||
+    new Date(tokenRecord.expires_at) <= new Date()
+  ) {
+    redirect(
+      buildPath("/forgot-password", {
+        error: "That reset link has expired. Request a new one to keep going.",
+      }),
+    );
+  }
+
+  await updateUserPassword(tokenRecord.user_id, hashPassword(password));
+  await markPasswordResetTokenUsed(tokenRecord.id);
+  await deleteSessionsForUser(tokenRecord.user_id);
+
+  revalidateAppShell();
+  redirect(
+    buildPath("/auth", {
+      message: "Your password has been reset. Sign in with your new password.",
+    }),
+  );
 }
 
 export async function signOutAction() {

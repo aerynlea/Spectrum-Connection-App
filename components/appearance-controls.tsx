@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 import {
   appearanceModeOptions,
@@ -19,6 +19,7 @@ type AppearanceControlsProps = {
 };
 
 const mediaQuery = "(prefers-color-scheme: dark)";
+const appearanceEventName = "guiding-light-appearancechange";
 
 function resolveMode(mode: AppearanceMode) {
   if (typeof window === "undefined") {
@@ -59,6 +60,8 @@ function applyAppearance(
   } catch {
     // Ignore storage failures so the app still remains usable.
   }
+
+  window.dispatchEvent(new Event(appearanceEventName));
 }
 
 function readAppearance() {
@@ -77,6 +80,56 @@ function readAppearance() {
   return {
     mode,
     palette,
+  };
+}
+
+function subscribeToAppearance(onStoreChange: () => void) {
+  if (typeof window === "undefined") {
+    return () => undefined;
+  }
+
+  const handleStorage = (event: StorageEvent) => {
+    if (
+      event.key &&
+      event.key !== appearanceStorageKeys.mode &&
+      event.key !== appearanceStorageKeys.palette
+    ) {
+      return;
+    }
+
+    onStoreChange();
+  };
+
+  const media = window.matchMedia(mediaQuery);
+  const handleSystemChange = () => {
+    const appearance = readAppearance();
+
+    if (appearance.mode === "system") {
+      applyAppearance("system", appearance.palette, false);
+    }
+
+    onStoreChange();
+  };
+
+  window.addEventListener("storage", handleStorage);
+  window.addEventListener(appearanceEventName, onStoreChange);
+
+  if (typeof media.addEventListener === "function") {
+    media.addEventListener("change", handleSystemChange);
+  } else {
+    media.addListener(handleSystemChange);
+  }
+
+  return () => {
+    window.removeEventListener("storage", handleStorage);
+    window.removeEventListener(appearanceEventName, onStoreChange);
+
+    if (typeof media.addEventListener === "function") {
+      media.removeEventListener("change", handleSystemChange);
+      return;
+    }
+
+    media.removeListener(handleSystemChange);
   };
 }
 
@@ -155,88 +208,26 @@ function AppearancePanelContent({
 export function AppearanceControls({
   variant = "popover",
 }: AppearanceControlsProps) {
-  const [appearance, setAppearance] = useState<{
-    mode: AppearanceMode;
-    palette: AppearancePalette;
-  }>(defaultAppearance);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    const handleStorage = (event: StorageEvent) => {
-      if (
-        event.key &&
-        event.key !== appearanceStorageKeys.mode &&
-        event.key !== appearanceStorageKeys.palette
-      ) {
-        return;
-      }
-
-      const nextAppearance = readAppearance();
-      setAppearance((current) =>
-        current.mode === nextAppearance.mode && current.palette === nextAppearance.palette
-          ? current
-          : nextAppearance,
-      );
-    };
-
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
-  }, []);
-
-  useEffect(() => {
-    applyAppearance(appearance.mode, appearance.palette, false);
-  }, [appearance.mode, appearance.palette]);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || appearance.mode !== "system") {
-      return undefined;
-    }
-
-    const media = window.matchMedia(mediaQuery);
-    const syncSystemPreference = () => {
-      applyAppearance("system", appearance.palette, false);
-    };
-
-    syncSystemPreference();
-
-    if (typeof media.addEventListener === "function") {
-      media.addEventListener("change", syncSystemPreference);
-      return () => media.removeEventListener("change", syncSystemPreference);
-    }
-
-    media.addListener(syncSystemPreference);
-    return () => media.removeListener(syncSystemPreference);
-  }, [appearance.mode, appearance.palette]);
+  const appearance = useSyncExternalStore(
+    subscribeToAppearance,
+    readAppearance,
+    () => defaultAppearance,
+  );
 
   const handleModeChange = (nextMode: AppearanceMode) => {
-    setAppearance((current) => {
-      if (current.mode === nextMode) {
-        return current;
-      }
+    if (appearance.mode === nextMode) {
+      return;
+    }
 
-      applyAppearance(nextMode, current.palette);
-      return {
-        ...current,
-        mode: nextMode,
-      };
-    });
+    applyAppearance(nextMode, appearance.palette);
   };
 
   const handlePaletteChange = (nextPalette: AppearancePalette) => {
-    setAppearance((current) => {
-      if (current.palette === nextPalette) {
-        return current;
-      }
+    if (appearance.palette === nextPalette) {
+      return;
+    }
 
-      applyAppearance(current.mode, nextPalette);
-      return {
-        ...current,
-        palette: nextPalette,
-      };
-    });
+    applyAppearance(appearance.mode, nextPalette);
   };
 
   const { mode, palette } = appearance;

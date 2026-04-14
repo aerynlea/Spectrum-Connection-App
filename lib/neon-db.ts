@@ -48,6 +48,14 @@ type SessionRow = {
   expires_at: string;
 };
 
+type PasswordResetTokenRow = {
+  id: string;
+  user_id: string;
+  token_hash: string;
+  expires_at: string;
+  used_at: string | null;
+};
+
 type ResourceRow = {
   id: string;
   title: string;
@@ -333,6 +341,27 @@ async function seedHostedDatabase() {
       expires_at TEXT NOT NULL,
       created_at TEXT NOT NULL
     )
+  `);
+
+  await sql.query(`
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      used_at TEXT
+    )
+  `);
+
+  await sql.query(`
+    CREATE INDEX IF NOT EXISTS password_reset_tokens_user_id_idx
+    ON password_reset_tokens (user_id)
+  `);
+
+  await sql.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS password_reset_tokens_token_hash_idx
+    ON password_reset_tokens (token_hash)
   `);
 
   await sql.query(`
@@ -918,10 +947,96 @@ export async function deleteSession(sessionId: string) {
   await sql`DELETE FROM sessions WHERE id = ${sessionId}`;
 }
 
+export async function deleteSessionsForUser(userId: string) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+  await sql`DELETE FROM sessions WHERE user_id = ${userId}`;
+}
+
 export async function deleteExpiredSessions() {
   await ensureHostedDatabase();
   const sql = getSql();
   await sql`DELETE FROM sessions WHERE expires_at <= ${new Date().toISOString()}`;
+}
+
+export async function createPasswordResetToken(
+  userId: string,
+  tokenHash: string,
+  expiresAt: string,
+) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  await sql`DELETE FROM password_reset_tokens WHERE user_id = ${userId}`;
+
+  const tokenId = randomUUID();
+
+  await sql`
+    INSERT INTO password_reset_tokens (
+      id,
+      user_id,
+      token_hash,
+      expires_at,
+      created_at,
+      used_at
+    ) VALUES (
+      ${tokenId},
+      ${userId},
+      ${tokenHash},
+      ${expiresAt},
+      ${new Date().toISOString()},
+      ${null}
+    )
+  `;
+
+  return tokenId;
+}
+
+export async function getPasswordResetToken(tokenHash: string) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  const [row] = (await sql`
+    SELECT id, user_id, token_hash, expires_at, used_at
+    FROM password_reset_tokens
+    WHERE token_hash = ${tokenHash}
+  `) as PasswordResetTokenRow[];
+
+  return row ?? undefined;
+}
+
+export async function markPasswordResetTokenUsed(tokenId: string) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  await sql`
+    UPDATE password_reset_tokens
+    SET used_at = ${new Date().toISOString()}
+    WHERE id = ${tokenId}
+  `;
+}
+
+export async function deleteExpiredPasswordResetTokens() {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  await sql`
+    DELETE FROM password_reset_tokens
+    WHERE expires_at <= ${new Date().toISOString()} OR used_at IS NOT NULL
+  `;
+}
+
+export async function updateUserPassword(userId: string, passwordHash: string) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  await sql`
+    UPDATE users
+    SET password_hash = ${passwordHash}, auth_provider = 'local'
+    WHERE id = ${userId}
+  `;
+
+  return getUserById(userId);
 }
 
 export async function listResources(userId?: string | null) {

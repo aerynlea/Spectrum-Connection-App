@@ -28,6 +28,12 @@ function signSessionId(sessionId: string) {
   return createHmac("sha256", sessionSecret).update(sessionId).digest("base64url");
 }
 
+export function hashPasswordResetToken(token: string) {
+  return createHmac("sha256", sessionSecret)
+    .update(`password-reset:${token}`)
+    .digest("hex");
+}
+
 function createSessionToken(sessionId: string) {
   return `${sessionId}.${signSessionId(sessionId)}`;
 }

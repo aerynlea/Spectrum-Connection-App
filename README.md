@@ -56,7 +56,13 @@ The local app runs at `http://localhost:3000`.
 - `STRIPE_WEBHOOK_SECRET`
 - `STRIPE_PRICE_ID_PREMIUM`
 
+### Password recovery email
+
+- `RESEND_API_KEY`
+- `EMAIL_FROM`
+
 If Clerk keys are missing, the app uses the built-in local auth flow. If Stripe values are missing, the membership page stays visible but checkout is disabled gracefully.
+If the email values are missing, the local forgot-password pages still exist but reset emails cannot be delivered in production.
 
 ## Production launch checklist
 

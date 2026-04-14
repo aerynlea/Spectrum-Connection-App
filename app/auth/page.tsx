@@ -116,6 +116,11 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
                 <span>Password</span>
                 <input name="password" placeholder="Enter your password" required type="password" />
               </label>
+              <div className="form-card__support">
+                <Link className="support-link" href="/forgot-password">
+                  Forgot password?
+                </Link>
+              </div>
               <button className="button-primary" type="submit">
                 Sign in
               </button>

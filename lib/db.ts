@@ -115,6 +115,14 @@ type SessionRow = {
   expires_at: string;
 };
 
+type PasswordResetTokenRow = {
+  id: string;
+  user_id: string;
+  token_hash: string;
+  expires_at: string;
+  used_at: string | null;
+};
+
 type StatsRow = {
   users_count: number;
   resources_count: number;
@@ -213,6 +221,16 @@ function getDatabase() {
       user_id TEXT NOT NULL,
       expires_at TEXT NOT NULL,
       created_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      token_hash TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      used_at TEXT,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
@@ -420,6 +438,28 @@ function ensureContentColumns(database: DatabaseSync) {
       FOREIGN KEY (post_id) REFERENCES community_posts(id) ON DELETE CASCADE,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
     )
+  `);
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      token_hash TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      used_at TEXT,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  database.exec(`
+    CREATE INDEX IF NOT EXISTS password_reset_tokens_user_id_idx
+    ON password_reset_tokens (user_id)
+  `);
+
+  database.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS password_reset_tokens_token_hash_idx
+    ON password_reset_tokens (token_hash)
   `);
 }
 
@@ -936,10 +976,69 @@ export function deleteSession(sessionId: string) {
   database().prepare("DELETE FROM sessions WHERE id = ?").run(sessionId);
 }
 
+export function deleteSessionsForUser(userId: string) {
+  database().prepare("DELETE FROM sessions WHERE user_id = ?").run(userId);
+}
+
 export function deleteExpiredSessions() {
   database().prepare("DELETE FROM sessions WHERE expires_at <= ?").run(
     new Date().toISOString(),
   );
+}
+
+export function createPasswordResetToken(
+  userId: string,
+  tokenHash: string,
+  expiresAt: string,
+) {
+  database()
+    .prepare("DELETE FROM password_reset_tokens WHERE user_id = ?")
+    .run(userId);
+
+  const tokenId = randomUUID();
+
+  database().prepare(`
+    INSERT INTO password_reset_tokens (
+      id,
+      user_id,
+      token_hash,
+      expires_at,
+      created_at,
+      used_at
+    ) VALUES (?, ?, ?, ?, ?, ?)
+  `).run(tokenId, userId, tokenHash, expiresAt, new Date().toISOString(), null);
+
+  return tokenId;
+}
+
+export function getPasswordResetToken(tokenHash: string) {
+  return database()
+    .prepare(
+      "SELECT id, user_id, token_hash, expires_at, used_at FROM password_reset_tokens WHERE token_hash = ?",
+    )
+    .get(tokenHash) as PasswordResetTokenRow | undefined;
+}
+
+export function markPasswordResetTokenUsed(tokenId: string) {
+  database()
+    .prepare("UPDATE password_reset_tokens SET used_at = ? WHERE id = ?")
+    .run(new Date().toISOString(), tokenId);
+}
+
+export function deleteExpiredPasswordResetTokens() {
+  database().prepare(
+    "DELETE FROM password_reset_tokens WHERE expires_at <= ? OR used_at IS NOT NULL",
+  ).run(new Date().toISOString());
+}
+
+export function updateUserPassword(userId: string, passwordHash: string) {
+  database().prepare(`
+    UPDATE users
+    SET password_hash = ?, auth_provider = 'local'
+    WHERE id = ?
+  `).run(passwordHash, userId);
+
+  return getUserById(userId);
 }
 
 export function listResources(userId?: string | null) {

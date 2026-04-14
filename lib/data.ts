@@ -90,10 +90,50 @@ export async function deleteSession(sessionId: string) {
     : (await getLocal()).deleteSession(sessionId);
 }
 
+export async function deleteSessionsForUser(userId: string) {
+  return isNeonConfigured
+    ? (await getHosted()).deleteSessionsForUser(userId)
+    : (await getLocal()).deleteSessionsForUser(userId);
+}
+
 export async function deleteExpiredSessions() {
   return isNeonConfigured
     ? (await getHosted()).deleteExpiredSessions()
     : (await getLocal()).deleteExpiredSessions();
+}
+
+export async function createPasswordResetToken(
+  userId: string,
+  tokenHash: string,
+  expiresAt: string,
+) {
+  return isNeonConfigured
+    ? (await getHosted()).createPasswordResetToken(userId, tokenHash, expiresAt)
+    : (await getLocal()).createPasswordResetToken(userId, tokenHash, expiresAt);
+}
+
+export async function getPasswordResetToken(tokenHash: string) {
+  return isNeonConfigured
+    ? (await getHosted()).getPasswordResetToken(tokenHash)
+    : (await getLocal()).getPasswordResetToken(tokenHash);
+}
+
+export async function markPasswordResetTokenUsed(tokenId: string) {
+  return isNeonConfigured
+    ? (await getHosted()).markPasswordResetTokenUsed(tokenId)
+    : (await getLocal()).markPasswordResetTokenUsed(tokenId);
+}
+
+export async function deleteExpiredPasswordResetTokens() {
+  return isNeonConfigured
+    ? (await getHosted()).deleteExpiredPasswordResetTokens()
+    : (await getLocal()).deleteExpiredPasswordResetTokens();
+}
+
+export async function updateUserPassword(userId: string, passwordHash: string) {
+  return isNeonConfigured
+    ? (await getHosted()).updateUserPassword(userId, passwordHash)
+    : (await getLocal()).updateUserPassword(userId, passwordHash);
 }
 
 export async function listResources(userId?: string | null) {
