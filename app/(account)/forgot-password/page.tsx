@@ -6,7 +6,7 @@ import { SectionHeading } from "@/components/section-heading";
 import { StatusBanner } from "@/components/status-banner";
 import { isPasswordResetEmailConfigured } from "@/lib/email";
 import { isClerkConfigured } from "@/lib/platform";
-import { isProductionDeployment } from "@/lib/platform";
+import { isLocalDevelopment } from "@/lib/platform";
 import { getQueryMessage, type PageSearchParams } from "@/lib/search-params";
 
 type ForgotPasswordPageProps = {
@@ -54,7 +54,7 @@ export default async function ForgotPasswordPage({
             </div>
           </div>
         </section>
-      ) : !isEmailResetReady && isProductionDeployment ? (
+      ) : !isEmailResetReady && !isLocalDevelopment ? (
         <section className="section split-layout">
           <div className="section-panel">
             <SectionHeading

@@ -10,6 +10,9 @@ export const isProductionDeployment =
   process.env.VERCEL_ENV === "production" ||
   (process.env.NODE_ENV === "production" && Boolean(process.env.VERCEL_URL));
 
+export const isLocalDevelopment =
+  process.env.NODE_ENV === "development" && !Boolean(process.env.VERCEL_URL);
+
 // Keep development Clerk instances off the public site until production keys
 // are connected, then allow hosted auth to switch back on automatically.
 export const isClerkConfigured =
