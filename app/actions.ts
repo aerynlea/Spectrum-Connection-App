@@ -241,12 +241,20 @@ export async function requestPasswordResetAction(formData: FormData) {
     resetUrl,
   });
 
-  if (!emailSent && process.env.NODE_ENV !== "production") {
+  if (!emailSent) {
+    if (process.env.NODE_ENV !== "production") {
+      redirect(
+        buildPath("/reset-password", {
+          message:
+            "Email delivery is not connected yet, so this development link was opened directly.",
+          token: rawToken,
+        }),
+      );
+    }
+
     redirect(
-      buildPath("/reset-password", {
-        message:
-          "Email delivery is not connected yet, so this development link was opened directly.",
-        token: rawToken,
+      buildPath("/forgot-password", {
+        error: "We could not send the reset email just now. Please try again shortly.",
       }),
     );
   }
