@@ -1,30 +1,18 @@
-import type { ReactNode } from "react";
+import "../globals.css";
 
-import { SiteHeader } from "@/components/site-header";
+export const metadata = {
+  title: "Guiding Light",
+  description: "Temporary recovery mode",
+};
 
-export default function SiteLayout({
+export default function RootLayout({
   children,
-}: Readonly<{
-  children: ReactNode;
-}>) {
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <>
-      <div className="page-backdrop" />
-      <SiteHeader />
-      <main className="app-shell">{children}</main>
-      <footer className="site-footer">
-        <div>
-          <p className="footer-title">Guiding Light</p>
-          <p className="footer-copy">
-            A calm, connected home for autism-focused resources, support, and
-            community.
-          </p>
-        </div>
-        <p className="footer-copy">
-          Built around the belief that every journey deserves trustworthy
-          guidance, belonging, and room to grow.
-        </p>
-      </footer>
-    </>
+    <html lang="en">
+      <body>{children}</body>
+    </html>
   );
 }

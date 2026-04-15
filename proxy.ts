@@ -1,30 +1,21 @@
-import type { NextFetchEvent, NextRequest } from "next/server";
-import { NextResponse } from "next/server";
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-import { getClerkAuthorizedParties, isClerkConfigured } from "@/lib/platform";
+const isProtectedRoute = createRouteMatcher([
+  '/dashboard(.*)',
+  '/onboarding(.*)',
+]);
 
-const isProtectedRoute = createRouteMatcher(["/dashboard(.*)", "/onboarding(.*)"]);
+export default clerkMiddleware(async (auth, req) => {
+  const { isAuthenticated, redirectToSignIn } = await auth();
 
-const clerkProxy = clerkMiddleware(async (auth, request) => {
-  if (isProtectedRoute(request)) {
-    await auth.protect();
+  if (!isAuthenticated && isProtectedRoute(req)) {
+    return redirectToSignIn({ returnBackUrl: req.url });
   }
-}, {
-  authorizedParties: getClerkAuthorizedParties(),
 });
-
-export function proxy(request: NextRequest, event: NextFetchEvent) {
-  if (!isClerkConfigured) {
-    return NextResponse.next();
-  }
-
-  return clerkProxy(request, event);
-}
 
 export const config = {
   matcher: [
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    "/(api|trpc)(.*)",
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    '/(api|trpc)(.*)',
   ],
 };
