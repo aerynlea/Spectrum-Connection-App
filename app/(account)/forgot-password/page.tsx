@@ -1,12 +1,9 @@
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
-import { redirect } from "next/navigation";
 
 import { requestPasswordResetAction } from "@/app/actions";
-import { FormSubmitButton } from "@/components/form-submit-button";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusBanner } from "@/components/status-banner";
-import { getCurrentUser } from "@/lib/auth";
 import { isClerkConfigured } from "@/lib/platform";
 import { getQueryMessage, type PageSearchParams } from "@/lib/search-params";
 
@@ -18,12 +15,6 @@ export default async function ForgotPasswordPage({
   searchParams,
 }: ForgotPasswordPageProps) {
   noStore();
-
-  const currentUser = await getCurrentUser();
-
-  if (currentUser) {
-    redirect("/dashboard");
-  }
 
   const message = await getQueryMessage(searchParams, "message");
   const error = await getQueryMessage(searchParams, "error");
@@ -73,10 +64,9 @@ export default async function ForgotPasswordPage({
                 <span>Email</span>
                 <input name="email" placeholder="you@example.com" required type="email" />
               </label>
-              <FormSubmitButton
-                idleLabel="Send reset link"
-                pendingLabel="Sending reset link..."
-              />
+              <button className="button-primary" type="submit">
+                Send reset link
+              </button>
             </form>
           </div>
 

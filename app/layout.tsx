@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { ClerkProvider } from "@clerk/nextjs";
 import Script from "next/script";
 
-import { SiteHeader } from "@/components/site-header";
 import { getAppearanceBootstrapScript } from "@/lib/appearance";
 import {
   isClerkConfigured,
@@ -28,27 +27,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: ReactNode;
 }>) {
-  const appBody = (
-    <>
-      <div className="page-backdrop" />
-      <SiteHeader />
-      <main className="app-shell">{children}</main>
-      <footer className="site-footer">
-        <div>
-          <p className="footer-title">Guiding Light</p>
-          <p className="footer-copy">
-            A calm, connected home for autism-focused resources, support, and
-            community.
-          </p>
-        </div>
-        <p className="footer-copy">
-          Built around the belief that every journey deserves trustworthy
-          guidance, belonging, and room to grow.
-        </p>
-      </footer>
-    </>
-  );
-
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
@@ -61,10 +39,10 @@ export default async function RootLayout({
               isClerkDevelopmentInstance && !isProductionDeployment
             }
           >
-            {appBody}
+            {children}
           </ClerkProvider>
         ) : (
-          appBody
+          children
         )}
       </body>
     </html>

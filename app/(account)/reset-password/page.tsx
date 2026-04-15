@@ -1,12 +1,10 @@
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
-import { redirect } from "next/navigation";
 
 import { resetPasswordAction } from "@/app/actions";
-import { FormSubmitButton } from "@/components/form-submit-button";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusBanner } from "@/components/status-banner";
-import { getCurrentUser, hashPasswordResetToken } from "@/lib/auth";
+import { hashPasswordResetToken } from "@/lib/auth";
 import { deleteExpiredPasswordResetTokens, getPasswordResetToken } from "@/lib/data";
 import { getQueryMessage, type PageSearchParams } from "@/lib/search-params";
 
@@ -18,12 +16,6 @@ export default async function ResetPasswordPage({
   searchParams,
 }: ResetPasswordPageProps) {
   noStore();
-
-  const currentUser = await getCurrentUser();
-
-  if (currentUser) {
-    redirect("/dashboard");
-  }
 
   await deleteExpiredPasswordResetTokens();
 
@@ -102,10 +94,9 @@ export default async function ResetPasswordPage({
               <span>Confirm password</span>
               <input minLength={8} name="confirmPassword" required type="password" />
             </label>
-            <FormSubmitButton
-              idleLabel="Reset password"
-              pendingLabel="Saving new password..."
-            />
+            <button className="button-primary" type="submit">
+              Reset password
+            </button>
           </form>
         </div>
 
