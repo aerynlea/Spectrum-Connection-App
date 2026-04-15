@@ -4,7 +4,9 @@ import { unstable_noStore as noStore } from "next/cache";
 import { requestPasswordResetAction } from "@/app/actions";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusBanner } from "@/components/status-banner";
+import { isPasswordResetEmailConfigured } from "@/lib/email";
 import { isClerkConfigured } from "@/lib/platform";
+import { isProductionDeployment } from "@/lib/platform";
 import { getQueryMessage, type PageSearchParams } from "@/lib/search-params";
 
 type ForgotPasswordPageProps = {
@@ -18,6 +20,7 @@ export default async function ForgotPasswordPage({
 
   const message = await getQueryMessage(searchParams, "message");
   const error = await getQueryMessage(searchParams, "error");
+  const isEmailResetReady = isPasswordResetEmailConfigured();
 
   return (
     <div className="page">
@@ -48,6 +51,61 @@ export default async function ForgotPasswordPage({
               <Link className="button-secondary" href="/auth">
                 Back to account page
               </Link>
+            </div>
+          </div>
+        </section>
+      ) : !isEmailResetReady && isProductionDeployment ? (
+        <section className="section split-layout">
+          <div className="section-panel">
+            <SectionHeading
+              eyebrow="Reset email update"
+              intro="Password reset email is still being connected, so this part of the account flow is paused for the moment."
+              title="We&apos;re finishing the email connection."
+            />
+            <div className="feature-card">
+              <p>
+                You can still return to sign in, and this page will be ready as
+                soon as email delivery is fully connected.
+              </p>
+            </div>
+            <div className="button-row">
+              <Link className="button-primary" href="/auth">
+                Back to sign in
+              </Link>
+              <Link className="button-secondary" href="/">
+                Go home
+              </Link>
+            </div>
+          </div>
+
+          <div className="section-panel section-panel--accent">
+            <SectionHeading
+              eyebrow="What&apos;s happening"
+              intro="This pause helps us avoid sending you into an error page or a reset loop while the email service is still being finalized."
+              title="A calmer hold for now."
+            />
+            <div className="support-steps">
+              <article className="support-step">
+                <span>01</span>
+                <div>
+                  <h3>Email delivery is being finished</h3>
+                  <p>We&apos;re holding the form until secure reset messages are ready to send.</p>
+                </div>
+              </article>
+              <article className="support-step">
+                <span>02</span>
+                <div>
+                  <h3>Your account is still safe</h3>
+                  <p>No password changes happen until a real reset link is available.</p>
+                </div>
+              </article>
+              <article className="support-step">
+                <span>03</span>
+                <div>
+                  <h3>Come back shortly</h3>
+                  <p>This section can be reopened as soon as the mail service is fully connected.</p>
+                </div>
+              </article>
             </div>
           </div>
         </section>

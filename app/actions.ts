@@ -35,11 +35,14 @@ import {
   updateUserPassword,
   updateUserProfile,
 } from "@/lib/data";
-import { sendPasswordResetEmail } from "@/lib/email";
+import {
+  isPasswordResetEmailConfigured,
+  sendPasswordResetEmail,
+} from "@/lib/email";
 import { hasPremiumAccess } from "@/lib/membership";
 import type { AgeGroup, GoalKey, UserRole } from "@/lib/app-types";
 import { formatRole } from "@/lib/formatters";
-import { getAppUrl, isClerkConfigured } from "@/lib/platform";
+import { getAppUrl, isClerkConfigured, isProductionDeployment } from "@/lib/platform";
 import { stripe, getStripePriceId, getStripeReturnUrl } from "@/lib/stripe";
 
 const validRoles = new Set(roleOptions.map((option) => option.value));
@@ -190,6 +193,15 @@ export async function signInAction(formData: FormData) {
 export async function requestPasswordResetAction(formData: FormData) {
   if (isClerkConfigured) {
     redirect("/sign-in");
+  }
+
+  if (isProductionDeployment && !isPasswordResetEmailConfigured()) {
+    redirect(
+      buildPath("/forgot-password", {
+        error:
+          "Password reset email is being connected right now. Please try again shortly.",
+      }),
+    );
   }
 
   const email = String(formData.get("email") ?? "").trim().toLowerCase();

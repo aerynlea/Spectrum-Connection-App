@@ -1,5 +1,25 @@
-const resendApiKey = process.env.RESEND_API_KEY;
-const emailFrom = process.env.EMAIL_FROM;
+function normalizeEnvValue(value: string | undefined) {
+  const trimmed = value?.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const unquoted = trimmed.replace(/^['"]+|['"]+$/g, "").trim();
+
+  return unquoted || null;
+}
+
+const resendApiKey = normalizeEnvValue(process.env.RESEND_API_KEY);
+const emailFrom = normalizeEnvValue(process.env.EMAIL_FROM);
+
+export function isPasswordResetEmailConfigured() {
+  return Boolean(
+    resendApiKey?.startsWith("re_") &&
+      emailFrom &&
+      emailFrom.includes("@"),
+  );
+}
 
 function maskEmailAddress(email: string) {
   const [localPart, domain = ""] = email.split("@");
@@ -21,11 +41,12 @@ export async function sendPasswordResetEmail(input: {
   to: string;
   resetUrl: string;
 }) {
-  if (!resendApiKey || !emailFrom) {
+  if (!isPasswordResetEmailConfigured()) {
     console.warn("Password reset email skipped: Resend is not configured.", {
       email: maskEmailAddress(input.to),
       hasEmailFrom: Boolean(emailFrom),
       hasResendApiKey: Boolean(resendApiKey),
+      resendKeyLooksValid: Boolean(resendApiKey?.startsWith("re_")),
     });
     return false;
   }
