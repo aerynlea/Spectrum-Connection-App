@@ -18,7 +18,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       ? await (searchParams as Promise<PageSearchParams>)
       : (searchParams as PageSearchParams | undefined);
 
-  const message = await getQueryMessage(resolvedSearchParams, "message");
+const message = null;
   const stats = await getStats();
   const posts = await listCommunityPosts(3);
   const events = await listEvents();
