@@ -12,6 +12,7 @@ function normalizeEnvValue(value: string | undefined) {
 
 const resendApiKey = normalizeEnvValue(process.env.RESEND_API_KEY);
 const emailFrom = normalizeEnvValue(process.env.EMAIL_FROM);
+const emailReplyTo = normalizeEnvValue(process.env.EMAIL_REPLY_TO);
 
 export function isPasswordResetEmailConfigured() {
   return Boolean(
@@ -60,6 +61,7 @@ export async function sendPasswordResetEmail(input: {
       },
       body: JSON.stringify({
         from: emailFrom,
+        reply_to: emailReplyTo || undefined,
         to: [input.to],
         subject: "Reset your Guiding Light password",
         text: [

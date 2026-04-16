@@ -60,9 +60,10 @@ The local app runs at `http://localhost:3000`.
 
 - `RESEND_API_KEY`
 - `EMAIL_FROM`
+- `EMAIL_REPLY_TO` (optional)
 
 If Clerk keys are missing, the app uses the built-in local auth flow. If Stripe values are missing, the membership page stays visible but checkout is disabled gracefully.
-If the email values are missing, the local forgot-password pages still exist but reset emails cannot be delivered in production.
+If the email values are missing, the local forgot-password pages still exist but reset emails cannot be delivered in production. `EMAIL_REPLY_TO` is optional and can point replies to a monitored inbox while sending from a branded address like `support@the-guidinglight.com`.
 
 ## Production launch checklist
 
