@@ -22,7 +22,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const stats = await getStats();
   const posts = await listCommunityPosts(3);
   const events = await listEvents();
-
   const resources = currentUser ? await listResources(currentUser.id) : [];
 
   return (
