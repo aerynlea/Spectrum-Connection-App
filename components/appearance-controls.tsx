@@ -20,6 +20,10 @@ type AppearanceControlsProps = {
 
 const mediaQuery = "(prefers-color-scheme: dark)";
 const appearanceEventName = "guiding-light-appearancechange";
+let cachedAppearanceSnapshot: {
+  mode: AppearanceMode;
+  palette: AppearancePalette;
+} = defaultAppearance;
 
 function resolveMode(mode: AppearanceMode) {
   if (typeof window === "undefined") {
@@ -77,10 +81,19 @@ function readAppearance() {
     ? root.dataset.themePalette
     : defaultAppearance.palette;
 
-  return {
+  if (
+    cachedAppearanceSnapshot.mode === mode &&
+    cachedAppearanceSnapshot.palette === palette
+  ) {
+    return cachedAppearanceSnapshot;
+  }
+
+  cachedAppearanceSnapshot = {
     mode,
     palette,
   };
+
+  return cachedAppearanceSnapshot;
 }
 
 function subscribeToAppearance(onStoreChange: () => void) {
