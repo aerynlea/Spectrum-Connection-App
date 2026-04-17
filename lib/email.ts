@@ -63,27 +63,25 @@ export async function sendPasswordResetEmail(input: {
         from: emailFrom,
         reply_to: emailReplyTo || undefined,
         to: [input.to],
-        subject: "Reset your Guiding Light password",
+        subject: "Guiding Light password help",
         text: [
           `Hi ${input.name},`,
           "",
-          "We received a request to reset your Guiding Light password.",
-          `Use this secure link to choose a new one: ${input.resetUrl}`,
+          "Someone asked to reset the password for your Guiding Light account.",
+          `If that was you, open this link to choose a new one: ${input.resetUrl}`,
           "",
-          "If you did not request this change, you can ignore this email.",
+          "If you did not ask for this, you can ignore this email.",
+          "",
+          "Guiding Light Support",
         ].join("\n"),
         html: `
           <div style="font-family:Arial,sans-serif;line-height:1.6;color:#1f2a44">
             <p>Hi ${input.name},</p>
-            <p>We received a request to reset your Guiding Light password.</p>
-            <p>
-              <a href="${input.resetUrl}" style="display:inline-block;padding:12px 18px;border-radius:999px;background:#5a7be8;color:#ffffff;text-decoration:none;font-weight:700">
-                Reset your password
-              </a>
-            </p>
-            <p>If the button does not open, copy this link into your browser:</p>
+            <p>Someone asked to reset the password for your Guiding Light account.</p>
+            <p>If that was you, open this link to choose a new one:</p>
             <p><a href="${input.resetUrl}">${input.resetUrl}</a></p>
-            <p>If you did not request this change, you can ignore this email.</p>
+            <p>If you did not ask for this, you can ignore this email.</p>
+            <p>Guiding Light Support</p>
           </div>
         `,
       }),
