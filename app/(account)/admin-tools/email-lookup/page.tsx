@@ -2,6 +2,7 @@ import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 
 import {
+  generateAdminResetLinkAction,
   lockAdminLookupAction,
   unlockAdminLookupAction,
 } from "@/app/actions";
@@ -38,6 +39,7 @@ export default async function EmailLookupPage({
   const message = await getQueryMessage(searchParams, "message");
   const error = await getQueryMessage(searchParams, "error");
   const email = normalizeLookupEmail(await getQueryMessage(searchParams, "email"));
+  const resetUrl = await getQueryMessage(searchParams, "resetUrl");
   const isConfigured = isAdminLookupConfigured();
   const hasAccess = isConfigured ? await hasAdminLookupAccess() : false;
 
@@ -175,6 +177,19 @@ export default async function EmailLookupPage({
                 </p>
               </div>
             ) : null}
+
+            {user && authRecord ? (
+              <form action={generateAdminResetLinkAction} className="form-card">
+                <input name="email" type="hidden" value={email ?? ""} />
+                <p className="field-help">
+                  Need a guaranteed workaround? Create a one-time reset link
+                  directly here without depending on inbox delivery.
+                </p>
+                <button className="button-primary" type="submit">
+                  Generate reset link
+                </button>
+              </form>
+            ) : null}
           </div>
 
           <div className="section-panel section-panel--accent">
@@ -228,6 +243,24 @@ export default async function EmailLookupPage({
                     <p>{formatDate(user.createdAt)}</p>
                   </div>
                 </article>
+              </div>
+            ) : null}
+
+            {resetUrl ? (
+              <div className="feature-card">
+                <h3>One-time reset link</h3>
+                <p>
+                  This private link opens the password reset page directly and
+                  expires automatically.
+                </p>
+                <p>
+                  <a href={resetUrl}>{resetUrl}</a>
+                </p>
+                <div className="button-row">
+                  <a className="button-primary" href={resetUrl}>
+                    Open reset link
+                  </a>
+                </div>
               </div>
             ) : email ? (
               <div className="empty-state">
