@@ -8,7 +8,6 @@ import { redirect } from "next/navigation";
 import {
   clearAdminLookupAccess,
   grantAdminLookupAccess,
-  hasAdminLookupAccess,
   isAdminLookupConfigured,
 } from "@/lib/admin-access";
 import {
@@ -136,54 +135,6 @@ export async function lockAdminLookupAction() {
   redirect(
     buildPath("/admin-tools/email-lookup", {
       message: "The lookup tool has been locked again.",
-    }),
-  );
-}
-
-export async function generateAdminResetLinkAction(formData: FormData) {
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
-
-  if (!isAdminLookupConfigured() || !(await hasAdminLookupAccess())) {
-    redirect(
-      buildPath("/admin-tools/email-lookup", {
-        error: "Unlock the private lookup tool before creating a reset link.",
-      }),
-    );
-  }
-
-  if (!email) {
-    redirect(
-      buildPath("/admin-tools/email-lookup", {
-        error: "Enter the email you want to check first.",
-      }),
-    );
-  }
-
-  await deleteExpiredPasswordResetTokens();
-
-  const user = await getUserByEmail(email);
-  const authRecord = await getUserAuthByEmail(email);
-
-  if (!user || !authRecord) {
-    redirect(
-      buildPath("/admin-tools/email-lookup", {
-        email,
-        error: "That email does not have a local password account to reset.",
-      }),
-    );
-  }
-
-  const rawToken = randomBytes(32).toString("hex");
-  const tokenHash = hashPasswordResetToken(rawToken);
-  const expiresAt = new Date(Date.now() + 1000 * 60 * 60).toISOString();
-
-  await createPasswordResetToken(user.id, tokenHash, expiresAt);
-
-  redirect(
-    buildPath("/admin-tools/email-lookup", {
-      email,
-      message: "A fresh one-time reset link is ready below.",
-      resetUrl: `${getAppUrl()}/reset-password?token=${encodeURIComponent(rawToken)}`,
     }),
   );
 }
