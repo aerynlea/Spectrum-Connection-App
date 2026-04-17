@@ -118,10 +118,22 @@ export async function getPasswordResetToken(tokenHash: string) {
     : (await getLocal()).getPasswordResetToken(tokenHash);
 }
 
+export async function getLatestPasswordResetTokenForUser(userId: string) {
+  return isNeonConfigured
+    ? (await getHosted()).getLatestPasswordResetTokenForUser(userId)
+    : (await getLocal()).getLatestPasswordResetTokenForUser(userId);
+}
+
 export async function markPasswordResetTokenUsed(tokenId: string) {
   return isNeonConfigured
     ? (await getHosted()).markPasswordResetTokenUsed(tokenId)
     : (await getLocal()).markPasswordResetTokenUsed(tokenId);
+}
+
+export async function deletePasswordResetTokensForUser(userId: string) {
+  return isNeonConfigured
+    ? (await getHosted()).deletePasswordResetTokensForUser(userId)
+    : (await getLocal()).deletePasswordResetTokensForUser(userId);
 }
 
 export async function deleteExpiredPasswordResetTokens() {

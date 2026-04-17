@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 
 import {
   appearanceModeOptions,
@@ -221,11 +221,34 @@ function AppearancePanelContent({
 export function AppearanceControls({
   variant = "popover",
 }: AppearanceControlsProps) {
+  const popoverRef = useRef<HTMLDetailsElement | null>(null);
   const appearance = useSyncExternalStore(
     subscribeToAppearance,
     readAppearance,
     () => defaultAppearance,
   );
+
+  useEffect(() => {
+    if (variant !== "popover") {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const popover = popoverRef.current;
+
+      if (!popover?.open || popover.contains(event.target as Node)) {
+        return;
+      }
+
+      popover.open = false;
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [variant]);
 
   const handleModeChange = (nextMode: AppearanceMode) => {
     if (appearance.mode === nextMode) {
@@ -263,7 +286,7 @@ export function AppearanceControls({
   }
 
   return (
-    <details className="appearance-panel appearance-panel--popover">
+    <details className="appearance-panel appearance-panel--popover" ref={popoverRef}>
       <summary className="appearance-panel__toggle">
         <span className="appearance-panel__toggle-label">Display</span>
       </summary>

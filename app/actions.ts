@@ -31,7 +31,9 @@ import {
   createCommunityPost,
   createUser,
   deleteExpiredPasswordResetTokens,
+  deletePasswordResetTokensForUser,
   deleteSessionsForUser,
+  getLatestPasswordResetTokenForUser,
   getUserAuthByEmail,
   getUserByEmail,
   getPasswordResetToken,
@@ -58,6 +60,7 @@ const validRoles = new Set(roleOptions.map((option) => option.value));
 const validAgeGroups = new Set(ageGroupOptions.map((option) => option.value));
 const validGoals = new Set(goalOptions.map((option) => option.value));
 const validTopics = new Set(communityTopicOptions);
+const passwordResetRequestCooldownMs = 1000 * 60 * 5;
 
 export type ProfileActionState = {
   status: "idle" | "success" | "error";
@@ -274,6 +277,31 @@ export async function requestPasswordResetAction(formData: FormData) {
     );
   }
 
+  const latestResetToken = await getLatestPasswordResetTokenForUser(user.id);
+  const now = Date.now();
+  const latestResetCreatedAt = latestResetToken
+    ? new Date(latestResetToken.created_at).getTime()
+    : 0;
+  const latestResetExpiresAt = latestResetToken
+    ? new Date(latestResetToken.expires_at).getTime()
+    : 0;
+  const hasActiveRecentReset =
+    Boolean(latestResetToken) &&
+    !latestResetToken?.used_at &&
+    Number.isFinite(latestResetCreatedAt) &&
+    Number.isFinite(latestResetExpiresAt) &&
+    latestResetExpiresAt > now &&
+    now - latestResetCreatedAt < passwordResetRequestCooldownMs;
+
+  if (hasActiveRecentReset) {
+    redirect(
+      buildPath("/forgot-password", {
+        message:
+          "If that email is in Guiding Light, a reset link may already be on the way. Give it a few minutes and check your inbox before trying again.",
+      }),
+    );
+  }
+
   const rawToken = randomBytes(32).toString("hex");
   const tokenHash = hashPasswordResetToken(rawToken);
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60).toISOString();
@@ -288,6 +316,8 @@ export async function requestPasswordResetAction(formData: FormData) {
   });
 
   if (!emailSent) {
+    await deletePasswordResetTokensForUser(user.id);
+
     if (process.env.NODE_ENV !== "production") {
       redirect(
         buildPath("/reset-password", {

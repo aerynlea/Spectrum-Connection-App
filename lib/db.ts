@@ -119,6 +119,7 @@ type PasswordResetTokenRow = {
   id: string;
   user_id: string;
   token_hash: string;
+  created_at: string;
   expires_at: string;
   used_at: string | null;
 };
@@ -1014,15 +1015,33 @@ export function createPasswordResetToken(
 export function getPasswordResetToken(tokenHash: string) {
   return database()
     .prepare(
-      "SELECT id, user_id, token_hash, expires_at, used_at FROM password_reset_tokens WHERE token_hash = ?",
+      "SELECT id, user_id, token_hash, created_at, expires_at, used_at FROM password_reset_tokens WHERE token_hash = ?",
     )
     .get(tokenHash) as PasswordResetTokenRow | undefined;
+}
+
+export function getLatestPasswordResetTokenForUser(userId: string) {
+  return database()
+    .prepare(
+      `
+        SELECT id, user_id, token_hash, created_at, expires_at, used_at
+        FROM password_reset_tokens
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+        LIMIT 1
+      `,
+    )
+    .get(userId) as PasswordResetTokenRow | undefined;
 }
 
 export function markPasswordResetTokenUsed(tokenId: string) {
   database()
     .prepare("UPDATE password_reset_tokens SET used_at = ? WHERE id = ?")
     .run(new Date().toISOString(), tokenId);
+}
+
+export function deletePasswordResetTokensForUser(userId: string) {
+  database().prepare("DELETE FROM password_reset_tokens WHERE user_id = ?").run(userId);
 }
 
 export function deleteExpiredPasswordResetTokens() {

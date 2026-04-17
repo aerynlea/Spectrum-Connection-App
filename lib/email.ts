@@ -10,6 +10,17 @@ function normalizeEnvValue(value: string | undefined) {
   return unquoted || null;
 }
 
+function extractEmailAddress(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const angleBracketMatch = value.match(/<([^>]+)>/);
+  const candidate = angleBracketMatch?.[1]?.trim() ?? value.trim();
+
+  return candidate.includes("@") ? candidate : null;
+}
+
 const resendApiKey = normalizeEnvValue(process.env.RESEND_API_KEY);
 const emailFrom = normalizeEnvValue(process.env.EMAIL_FROM);
 const emailReplyTo = normalizeEnvValue(process.env.EMAIL_REPLY_TO);
@@ -20,6 +31,10 @@ export function isPasswordResetEmailConfigured() {
       emailFrom &&
       emailFrom.includes("@"),
   );
+}
+
+export function getPasswordRecoverySupportEmail() {
+  return extractEmailAddress(emailReplyTo) ?? extractEmailAddress(emailFrom);
 }
 
 function maskEmailAddress(email: string) {

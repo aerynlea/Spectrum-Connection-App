@@ -4,7 +4,10 @@ import { unstable_noStore as noStore } from "next/cache";
 import { requestPasswordResetAction } from "@/app/actions";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusBanner } from "@/components/status-banner";
-import { isPasswordResetEmailConfigured } from "@/lib/email";
+import {
+  getPasswordRecoverySupportEmail,
+  isPasswordResetEmailConfigured,
+} from "@/lib/email";
 import { isClerkConfigured } from "@/lib/platform";
 import { isLocalDevelopment } from "@/lib/platform";
 import { getQueryMessage, type PageSearchParams } from "@/lib/search-params";
@@ -21,6 +24,10 @@ export default async function ForgotPasswordPage({
   const message = await getQueryMessage(searchParams, "message");
   const error = await getQueryMessage(searchParams, "error");
   const isEmailResetReady = isPasswordResetEmailConfigured();
+  const supportEmail = getPasswordRecoverySupportEmail();
+  const supportHref = supportEmail
+    ? `mailto:${supportEmail}?subject=${encodeURIComponent("Guiding Light account help")}`
+    : null;
 
   return (
     <div className="page">
@@ -126,6 +133,21 @@ export default async function ForgotPasswordPage({
                 Send reset link
               </button>
             </form>
+
+            {supportHref ? (
+              <div className="feature-card">
+                <h3>Still waiting?</h3>
+                <p>
+                  If you do not see the email after a few minutes, check spam or
+                  promotions first, then reach out and we can help you keep moving.
+                </p>
+                <div className="button-row">
+                  <a className="button-secondary" href={supportHref}>
+                    Email support
+                  </a>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="section-panel section-panel--accent">
@@ -154,6 +176,16 @@ export default async function ForgotPasswordPage({
                 <div>
                   <h3>Choose a new password</h3>
                   <p>Once you save it, you can sign in again right away.</p>
+                </div>
+              </article>
+              <article className="support-step">
+                <span>04</span>
+                <div>
+                  <h3>Pause before requesting another</h3>
+                  <p>
+                    If you already asked for a reset, give that message a few
+                    minutes before sending another request.
+                  </p>
                 </div>
               </article>
             </div>

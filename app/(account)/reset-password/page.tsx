@@ -6,6 +6,7 @@ import { SectionHeading } from "@/components/section-heading";
 import { StatusBanner } from "@/components/status-banner";
 import { hashPasswordResetToken } from "@/lib/auth";
 import { deleteExpiredPasswordResetTokens, getPasswordResetToken } from "@/lib/data";
+import { getPasswordRecoverySupportEmail } from "@/lib/email";
 import { getQueryMessage, type PageSearchParams } from "@/lib/search-params";
 
 type ResetPasswordPageProps = {
@@ -22,6 +23,10 @@ export default async function ResetPasswordPage({
   const message = await getQueryMessage(searchParams, "message");
   const error = await getQueryMessage(searchParams, "error");
   const token = await getQueryMessage(searchParams, "token");
+  const supportEmail = getPasswordRecoverySupportEmail();
+  const supportHref = supportEmail
+    ? `mailto:${supportEmail}?subject=${encodeURIComponent("Guiding Light password help")}`
+    : null;
   const resetRecord = token
     ? await getPasswordResetToken(hashPasswordResetToken(token))
     : null;
@@ -58,6 +63,11 @@ export default async function ResetPasswordPage({
             <Link className="button-secondary" href="/auth">
               Back to sign in
             </Link>
+            {supportHref ? (
+              <a className="button-secondary" href={supportHref}>
+                Email support
+              </a>
+            ) : null}
           </div>
         </section>
       </div>
@@ -106,6 +116,33 @@ export default async function ResetPasswordPage({
             intro="Once this is saved, head back to sign in with the password you just chose."
             title="You&apos;ll be ready to sign in again."
           />
+          <div className="support-steps">
+            <article className="support-step">
+              <span>01</span>
+              <div>
+                <h3>Save the new password once</h3>
+                <p>Your older sign-in sessions are cleared automatically for safety.</p>
+              </div>
+            </article>
+            <article className="support-step">
+              <span>02</span>
+              <div>
+                <h3>Sign in again</h3>
+                <p>Use the same email you used before, now with your new password.</p>
+              </div>
+            </article>
+            {supportHref ? (
+              <article className="support-step">
+                <span>03</span>
+                <div>
+                  <h3>Need a hand?</h3>
+                  <p>
+                    You can always reach us at <a href={supportHref}>{supportEmail}</a>.
+                  </p>
+                </div>
+              </article>
+            ) : null}
+          </div>
           <div className="button-row">
             <Link className="button-secondary" href="/auth">
               Back to sign in

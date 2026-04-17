@@ -52,6 +52,7 @@ type PasswordResetTokenRow = {
   id: string;
   user_id: string;
   token_hash: string;
+  created_at: string;
   expires_at: string;
   used_at: string | null;
 };
@@ -997,9 +998,24 @@ export async function getPasswordResetToken(tokenHash: string) {
   const sql = getSql();
 
   const [row] = (await sql`
-    SELECT id, user_id, token_hash, expires_at, used_at
+    SELECT id, user_id, token_hash, created_at, expires_at, used_at
     FROM password_reset_tokens
     WHERE token_hash = ${tokenHash}
+  `) as PasswordResetTokenRow[];
+
+  return row ?? undefined;
+}
+
+export async function getLatestPasswordResetTokenForUser(userId: string) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  const [row] = (await sql`
+    SELECT id, user_id, token_hash, created_at, expires_at, used_at
+    FROM password_reset_tokens
+    WHERE user_id = ${userId}
+    ORDER BY created_at DESC
+    LIMIT 1
   `) as PasswordResetTokenRow[];
 
   return row ?? undefined;
@@ -1014,6 +1030,13 @@ export async function markPasswordResetTokenUsed(tokenId: string) {
     SET used_at = ${new Date().toISOString()}
     WHERE id = ${tokenId}
   `;
+}
+
+export async function deletePasswordResetTokensForUser(userId: string) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  await sql`DELETE FROM password_reset_tokens WHERE user_id = ${userId}`;
 }
 
 export async function deleteExpiredPasswordResetTokens() {
