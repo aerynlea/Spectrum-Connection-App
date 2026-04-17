@@ -6,6 +6,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import {
+  clearAdminLookupAccess,
+  grantAdminLookupAccess,
+  isAdminLookupConfigured,
+} from "@/lib/admin-access";
+import {
   clearSession,
   establishSession,
   hashPassword,
@@ -95,6 +100,43 @@ function revalidateAppShell() {
   revalidatePath("/onboarding");
   revalidatePath("/professionals");
   revalidatePath("/resources");
+}
+
+export async function unlockAdminLookupAction(formData: FormData) {
+  const key = String(formData.get("key") ?? "");
+
+  if (!isAdminLookupConfigured()) {
+    redirect(
+      buildPath("/admin-tools/email-lookup", {
+        error: "The admin lookup tool is not configured yet.",
+      }),
+    );
+  }
+
+  const granted = await grantAdminLookupAccess(key);
+
+  if (!granted) {
+    redirect(
+      buildPath("/admin-tools/email-lookup", {
+        error: "That lookup key did not match.",
+      }),
+    );
+  }
+
+  redirect(
+    buildPath("/admin-tools/email-lookup", {
+      message: "Private lookup access is open for this session.",
+    }),
+  );
+}
+
+export async function lockAdminLookupAction() {
+  await clearAdminLookupAccess();
+  redirect(
+    buildPath("/admin-tools/email-lookup", {
+      message: "The lookup tool has been locked again.",
+    }),
+  );
 }
 
 export async function signUpAction(formData: FormData) {
