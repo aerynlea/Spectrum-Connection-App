@@ -24,6 +24,11 @@ export type ModerationEscalationEventType =
   | "restored"
   | "dismissed"
   | "member-note-updated";
+export type ModerationSeverityLevel =
+  | "low"
+  | "medium"
+  | "high"
+  | "critical";
 export type ProfessionalVerificationStatus =
   | "verified"
   | "review-in-progress"
@@ -179,6 +184,12 @@ export type TrustHistoryRecord = {
   dismissedReports: number;
   lastReportedAt: string;
   lastReviewedAt: string | null;
+  severityLevel: ModerationSeverityLevel;
+  severityScore: number;
+  reviewCues: Array<{
+    label: string;
+    detail: string;
+  }>;
 };
 
 export type ModerationMemberNoteRecord = {

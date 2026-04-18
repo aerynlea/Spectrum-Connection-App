@@ -1264,6 +1264,26 @@ a {
   background: color-mix(in srgb, var(--muted) 16%, transparent);
 }
 
+.status-chip--low {
+  background: color-mix(in srgb, var(--sky) 12%, transparent);
+  border-color: color-mix(in srgb, var(--sky) 26%, var(--card-soft-border));
+}
+
+.status-chip--medium {
+  background: color-mix(in srgb, #ffd27a 24%, transparent);
+  border-color: color-mix(in srgb, #ffd27a 34%, var(--card-soft-border));
+}
+
+.status-chip--high {
+  background: color-mix(in srgb, #ffb36c 28%, transparent);
+  border-color: color-mix(in srgb, #ff9c73 42%, var(--card-soft-border));
+}
+
+.status-chip--critical {
+  background: color-mix(in srgb, #ff8c8c 28%, transparent);
+  border-color: color-mix(in srgb, #ff8c8c 48%, var(--card-soft-border));
+}
+
 .text-link {
   align-self: flex-start;
   margin-top: 1.2rem;

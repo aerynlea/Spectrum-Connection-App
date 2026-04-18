@@ -20,6 +20,7 @@ import type {
   ModerationMemberNoteRecord,
   ModerationReportRecord,
   ModerationReportStatus,
+  ModerationSeverityLevel,
   TrustHistoryRecord,
 } from "@/lib/app-types";
 import {
@@ -41,6 +42,23 @@ type ModerationPageProps = {
 type ModerationTargetState = {
   exists: boolean;
   hidden: boolean;
+};
+
+type PrioritizedReport = {
+  report: ModerationReportRecord;
+  targetState: ModerationTargetState;
+  severityLevel: ModerationSeverityLevel;
+  severityScore: number;
+  reviewCues: Array<{
+    label: string;
+    detail: string;
+  }>;
+};
+
+type QueueSignal = {
+  title: string;
+  detail: string;
+  severityLevel: ModerationSeverityLevel;
 };
 
 function buildModerationSubjectKey(targetUserId: string | null, targetAuthor: string) {
@@ -105,6 +123,19 @@ function formatVerificationStatus(status: string) {
   }
 }
 
+function formatSeverity(level: ModerationSeverityLevel) {
+  switch (level) {
+    case "critical":
+      return "Critical";
+    case "high":
+      return "High priority";
+    case "medium":
+      return "Watch closely";
+    default:
+      return "Low priority";
+  }
+}
+
 function groupEscalationsBySubject(escalations: ModerationEscalationRecord[]) {
   const entries = new Map<string, ModerationEscalationRecord[]>();
 
@@ -122,7 +153,124 @@ function groupEscalationsBySubject(escalations: ModerationEscalationRecord[]) {
   return entries;
 }
 
-function buildTrustHistory(reports: ModerationReportRecord[]): TrustHistoryRecord[] {
+function scoreReason(reason: string) {
+  switch (reason) {
+    case "Misinformation or unsafe advice":
+      return 4;
+    case "Privacy concern":
+      return 4;
+    case "Unkind or harmful interaction":
+      return 3;
+    case "Spam or self-promotion":
+      return 2;
+    default:
+      return 1;
+  }
+}
+
+function severityFromScore(score: number): ModerationSeverityLevel {
+  if (score >= 8) {
+    return "critical";
+  }
+
+  if (score >= 6) {
+    return "high";
+  }
+
+  if (score >= 3) {
+    return "medium";
+  }
+
+  return "low";
+}
+
+function isRecent(timestamp: string, days: number) {
+  return (
+    Date.now() - new Date(timestamp).getTime() <=
+    days * 24 * 60 * 60 * 1000
+  );
+}
+
+function deriveTrustPriority(
+  history: Omit<TrustHistoryRecord, "severityLevel" | "severityScore" | "reviewCues">,
+  memberNote: ModerationMemberNoteRecord | undefined,
+  historyEscalations: ModerationEscalationRecord[],
+) {
+  const reviewCues: TrustHistoryRecord["reviewCues"] = [];
+  let score = 0;
+
+  if (history.openReports > 1) {
+    score += 4;
+    reviewCues.push({
+      label: "Multiple open reports",
+      detail: `${history.openReports} reports are still waiting for review.`,
+    });
+  } else if (history.openReports === 1) {
+    score += 2;
+    reviewCues.push({
+      label: "Open concern still active",
+      detail: "There is still an unresolved report tied to this member.",
+    });
+  }
+
+  if (history.hiddenActions > 0) {
+    score += 2;
+    reviewCues.push({
+      label: "Content has been hidden before",
+      detail: `${history.hiddenActions} moderation action${
+        history.hiddenActions === 1 ? "" : "s"
+      } led to content being hidden.`,
+    });
+  }
+
+  if (history.totalReports >= 3) {
+    score += 2;
+    reviewCues.push({
+      label: "Repeat concern pattern",
+      detail: `${history.totalReports} total reports have been filed for this member or profile name.`,
+    });
+  }
+
+  const recentEscalationCount = historyEscalations.filter((event) =>
+    isRecent(event.createdAt, 14),
+  ).length;
+
+  if (recentEscalationCount >= 3) {
+    score += 2;
+    reviewCues.push({
+      label: "Several recent moderation events",
+      detail: `${recentEscalationCount} moderation events happened in the last two weeks.`,
+    });
+  }
+
+  if (isRecent(history.lastReportedAt, 7)) {
+    score += 1;
+    reviewCues.push({
+      label: "Reported recently",
+      detail: "The newest concern came in within the last week.",
+    });
+  }
+
+  if (memberNote?.note) {
+    score += 1;
+    reviewCues.push({
+      label: "Member note on file",
+      detail: "A persistent moderation note already exists for this person.",
+    });
+  }
+
+  return {
+    severityScore: score,
+    severityLevel: severityFromScore(score),
+    reviewCues,
+  };
+}
+
+function buildTrustHistory(
+  reports: ModerationReportRecord[],
+  memberNoteMap: Map<string, ModerationMemberNoteRecord>,
+  escalationMap: Map<string, ModerationEscalationRecord[]>,
+): TrustHistoryRecord[] {
   const summaries = new Map<string, TrustHistoryRecord>();
 
   for (const report of reports) {
@@ -163,22 +311,177 @@ function buildTrustHistory(reports: ModerationReportRecord[]): TrustHistoryRecor
       dismissedReports: report.status === "dismissed" ? 1 : 0,
       lastReportedAt: report.createdAt,
       lastReviewedAt: report.reviewedAt,
+      severityLevel: "low",
+      severityScore: 0,
+      reviewCues: [],
     });
   }
 
-  return Array.from(summaries.values()).sort((left, right) => {
-    if (right.openReports !== left.openReports) {
-      return right.openReports - left.openReports;
+  return Array.from(summaries.values())
+    .map((history) => {
+      const priority = deriveTrustPriority(
+        history,
+        memberNoteMap.get(history.key),
+        escalationMap.get(history.key) ?? [],
+      );
+
+      return {
+        ...history,
+        severityLevel: priority.severityLevel,
+        severityScore: priority.severityScore,
+        reviewCues: priority.reviewCues,
+      };
+    })
+    .sort((left, right) => {
+      if (right.severityScore !== left.severityScore) {
+        return right.severityScore - left.severityScore;
+      }
+
+      if (right.openReports !== left.openReports) {
+        return right.openReports - left.openReports;
+      }
+
+      return (
+        new Date(right.lastReportedAt).getTime() -
+        new Date(left.lastReportedAt).getTime()
+      );
+    });
+}
+
+function buildReportPriority(
+  report: ModerationReportRecord,
+  targetState: ModerationTargetState,
+  history: TrustHistoryRecord | undefined,
+  memberNote: ModerationMemberNoteRecord | undefined,
+  historyEscalations: ModerationEscalationRecord[],
+): PrioritizedReport {
+  const reviewCues: PrioritizedReport["reviewCues"] = [];
+  let score = scoreReason(report.reason);
+
+  if (report.status === "open") {
+    score += 1;
+    reviewCues.push({
+      label: "Still open",
+      detail: "This report has not been fully resolved yet.",
+    });
+  }
+
+  if (history) {
+    score += Math.min(history.severityScore, 4);
+
+    if (history.totalReports >= 3) {
+      reviewCues.push({
+        label: "Repeat concern pattern",
+        detail: `${history.totalReports} total reports are tied to this member or author.`,
+      });
     }
 
-    return (
-      new Date(right.lastReportedAt).getTime() -
-      new Date(left.lastReportedAt).getTime()
-    );
-  });
+    if (history.hiddenActions > 0) {
+      reviewCues.push({
+        label: "Previously hidden content",
+        detail: "At least one earlier moderation action already hid content from public view.",
+      });
+    }
+  }
+
+  if (memberNote?.note) {
+    score += 1;
+    reviewCues.push({
+      label: "Member note on file",
+      detail: "A persistent moderator note already exists for this person.",
+    });
+  }
+
+  const recentEscalationCount = historyEscalations.filter((event) =>
+    isRecent(event.createdAt, 14),
+  ).length;
+
+  if (recentEscalationCount >= 3) {
+    score += 1;
+    reviewCues.push({
+      label: "Recent moderation activity",
+      detail: `${recentEscalationCount} moderation events happened in the last two weeks.`,
+    });
+  }
+
+  if (!targetState.exists) {
+    reviewCues.push({
+      label: "Original item is missing",
+      detail: "The original content is gone, so review any context with extra care.",
+    });
+  } else if (targetState.hidden) {
+    reviewCues.push({
+      label: "Already hidden",
+      detail: "The content is already hidden while this report stays on record.",
+    });
+  }
+
+  return {
+    report,
+    targetState,
+    severityScore: score,
+    severityLevel: severityFromScore(score),
+    reviewCues,
+  };
+}
+
+function buildQueueSignals(
+  prioritizedReports: PrioritizedReport[],
+  trustHistory: TrustHistoryRecord[],
+): QueueSignal[] {
+  const signals: QueueSignal[] = [];
+  const highestOpenReport = prioritizedReports.find(
+    (entry) =>
+      entry.report.status === "open" &&
+      (entry.severityLevel === "critical" || entry.severityLevel === "high"),
+  );
+
+  if (highestOpenReport) {
+    signals.push({
+      title: `${formatSeverity(highestOpenReport.severityLevel)} report waiting`,
+      detail: `${highestOpenReport.report.targetAuthor} was flagged for ${highestOpenReport.report.reason.toLowerCase()}.`,
+      severityLevel: highestOpenReport.severityLevel,
+    });
+  }
+
+  const highestRiskMember = trustHistory.find(
+    (entry) =>
+      entry.severityLevel === "critical" || entry.severityLevel === "high",
+  );
+
+  if (highestRiskMember) {
+    signals.push({
+      title: "Repeat pattern needs follow-up",
+      detail: `${highestRiskMember.targetAuthor} has ${highestRiskMember.totalReports} total reports and ${highestRiskMember.openReports} still open.`,
+      severityLevel: highestRiskMember.severityLevel,
+    });
+  }
+
+  const hiddenPattern = trustHistory.find((entry) => entry.hiddenActions > 0);
+
+  if (hiddenPattern) {
+    signals.push({
+      title: "Past hidden-content history",
+      detail: `${hiddenPattern.targetAuthor} has ${hiddenPattern.hiddenActions} hidden-content action${
+        hiddenPattern.hiddenActions === 1 ? "" : "s"
+      } on record.`,
+      severityLevel:
+        hiddenPattern.hiddenActions > 1 ? "high" : "medium",
+    });
+  }
+
+  return signals.slice(0, 3);
 }
 
 function describeTrustHistory(history: TrustHistoryRecord) {
+  if (history.severityLevel === "critical") {
+    return "Priority follow-up";
+  }
+
+  if (history.severityLevel === "high") {
+    return "Needs close review";
+  }
+
   if (history.openReports > 0) {
     return "Needs attention";
   }
@@ -250,7 +553,6 @@ export default async function ModerationPage({
   const isConfigured = isAdminLookupConfigured();
   const hasAccess = isConfigured ? await hasAdminLookupAccess() : false;
   const reports = hasAccess ? await listModerationReports() : [];
-  const trustHistory = hasAccess ? buildTrustHistory(reports) : [];
   const memberNotes = hasAccess ? await listModerationMemberNotes() : [];
   const escalations = hasAccess ? await listModerationEscalations() : [];
   const professionals = hasAccess ? await listProfessionals(true) : [];
@@ -258,6 +560,9 @@ export default async function ModerationPage({
     memberNotes.map((note) => [note.subjectKey, note]),
   );
   const escalationMap = groupEscalationsBySubject(escalations);
+  const trustHistory = hasAccess
+    ? buildTrustHistory(reports, memberNoteMap, escalationMap)
+    : [];
   const reportsWithState = hasAccess
     ? await Promise.all(
         reports.map(async (report) => ({
@@ -266,6 +571,51 @@ export default async function ModerationPage({
         })),
       )
     : [];
+  const prioritizedReports = reportsWithState
+    .map(({ report, targetState }) => {
+      const subjectKey =
+        report.targetType === "professional"
+          ? null
+          : buildModerationSubjectKey(report.targetUserId, report.targetAuthor);
+
+      return buildReportPriority(
+        report,
+        targetState,
+        subjectKey
+          ? trustHistory.find((history) => history.key === subjectKey)
+          : undefined,
+        subjectKey ? memberNoteMap.get(subjectKey) : undefined,
+        subjectKey ? escalationMap.get(subjectKey) ?? [] : [],
+      );
+    })
+    .sort((left, right) => {
+      if (left.report.status !== right.report.status) {
+        if (left.report.status === "open") {
+          return -1;
+        }
+        if (right.report.status === "open") {
+          return 1;
+        }
+      }
+
+      if (right.severityScore !== left.severityScore) {
+        return right.severityScore - left.severityScore;
+      }
+
+      return (
+        new Date(right.report.createdAt).getTime() -
+        new Date(left.report.createdAt).getTime()
+      );
+    });
+  const queueSignals = buildQueueSignals(prioritizedReports, trustHistory);
+  const highPriorityReportCount = prioritizedReports.filter(
+    (entry) =>
+      entry.severityLevel === "critical" || entry.severityLevel === "high",
+  ).length;
+  const highRiskMemberCount = trustHistory.filter(
+    (entry) =>
+      entry.severityLevel === "critical" || entry.severityLevel === "high",
+  ).length;
   const counts = reports.reduce(
     (summary, report) => {
       summary.total += 1;
@@ -387,6 +737,14 @@ export default async function ModerationPage({
                   <strong>{counts.resolved}</strong>
                   <span>Resolved</span>
                 </article>
+                <article className="stat-card">
+                  <strong>{highPriorityReportCount}</strong>
+                  <span>High-priority reports</span>
+                </article>
+                <article className="stat-card">
+                  <strong>{highRiskMemberCount}</strong>
+                  <span>Members needing follow-up</span>
+                </article>
               </div>
               <div className="button-row">
                 <Link className="button-secondary" href="/admin-tools/email-lookup">
@@ -402,33 +760,31 @@ export default async function ModerationPage({
 
             <div className="section-panel section-panel--accent">
               <SectionHeading
-                eyebrow="Trust controls"
-                intro="Every action here should be easy to understand later."
-                title="Review with calm, visible judgment."
+                eyebrow="Automatic review cues"
+                intro="Severity and pattern matching now help the queue surface what is most urgent first."
+                title="What needs your attention first."
               />
-              <div className="support-steps">
-                <article className="support-step">
-                  <span>01</span>
-                  <div>
-                    <h3>Open reports first</h3>
-                    <p>Start with fresh concerns before revisiting already-reviewed items.</p>
-                  </div>
-                </article>
-                <article className="support-step">
-                  <span>02</span>
-                  <div>
-                    <h3>Use hidden only when needed</h3>
-                    <p>Hide content when it risks harm, misinformation, or privacy problems.</p>
-                  </div>
-                </article>
-                <article className="support-step">
-                  <span>03</span>
-                  <div>
-                    <h3>Restore with confidence</h3>
-                    <p>Bring content back when context shows it can stay up safely.</p>
-                  </div>
-                </article>
-              </div>
+              {queueSignals.length > 0 ? (
+                <div className="stack-list">
+                  {queueSignals.map((signal) => (
+                    <article className="feature-card feature-card--flat" key={signal.title}>
+                      <div className="thread-card__meta">
+                        <div>
+                          <h3>{signal.title}</h3>
+                        </div>
+                        <span className={`status-chip status-chip--${signal.severityLevel}`}>
+                          {formatSeverity(signal.severityLevel)}
+                        </span>
+                      </div>
+                      <p>{signal.detail}</p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state">
+                  <p>Automatic cues will appear here as reports and moderation events build over time.</p>
+                </div>
+              )}
             </div>
           </section>
 
@@ -440,8 +796,9 @@ export default async function ModerationPage({
             />
             {reportsWithState.length > 0 ? (
               <div className="stack-list">
-                {reportsWithState.map(({ report, targetState }) => (
+                {prioritizedReports.map((priority) => (
                   (() => {
+                    const { report, targetState } = priority;
                     const subjectKey =
                       report.targetType === "professional"
                         ? null
@@ -465,9 +822,16 @@ export default async function ModerationPage({
                               {formatTargetType(report.targetType)} • {report.targetAuthor}
                             </p>
                           </div>
-                          <span className={`status-chip status-chip--${report.status}`}>
-                            {formatStatus(report.status)}
-                          </span>
+                          <div className="pill-list pill-list--compact">
+                            <span className={`status-chip status-chip--${report.status}`}>
+                              {formatStatus(report.status)}
+                            </span>
+                            <span
+                              className={`status-chip status-chip--${priority.severityLevel}`}
+                            >
+                              {formatSeverity(priority.severityLevel)}
+                            </span>
+                          </div>
                         </div>
                         <p className="feature-label">
                           Reported by {report.reporterName} • {formatDateTime(report.createdAt)}
@@ -504,6 +868,15 @@ export default async function ModerationPage({
                             </span>
                           ) : null}
                         </div>
+                        {priority.reviewCues.length > 0 ? (
+                          <div className="pill-list pill-list--compact">
+                            {priority.reviewCues.slice(0, 4).map((cue) => (
+                              <span className="pill" key={cue.label}>
+                                {cue.label}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
                         <form action={reviewModerationReportAction} className="form-card">
                           <input name="reportId" type="hidden" value={report.id} />
                           <input name="targetId" type="hidden" value={report.targetId} />
@@ -608,19 +981,29 @@ export default async function ModerationPage({
                                   : "Name-only history from a seeded or legacy post"}
                               </p>
                             </div>
-                            <span
-                              className={`status-chip status-chip--${
-                                history.openReports > 0 ? "open" : "reviewed"
-                              }`}
-                            >
-                              {describeTrustHistory(history)}
-                            </span>
+                            <div className="pill-list pill-list--compact">
+                              <span
+                                className={`status-chip status-chip--${
+                                  history.openReports > 0 ? "open" : "reviewed"
+                                }`}
+                              >
+                                {describeTrustHistory(history)}
+                              </span>
+                              <span
+                                className={`status-chip status-chip--${history.severityLevel}`}
+                              >
+                                {formatSeverity(history.severityLevel)}
+                              </span>
+                            </div>
                           </div>
                           <div className="pill-list pill-list--compact">
                             <span className="pill">{history.totalReports} total reports</span>
                             <span className="pill">{history.openReports} open</span>
                             <span className="pill">{history.resolvedReports} resolved</span>
                             <span className="pill">{history.hiddenActions} hidden actions</span>
+                            <span className="pill">
+                              Severity score {history.severityScore}
+                            </span>
                             <span className="pill">
                               {historyEscalations.length} recent event
                               {historyEscalations.length === 1 ? "" : "s"}
@@ -632,6 +1015,15 @@ export default async function ModerationPage({
                               ? ` • Last reviewed ${formatDateTime(history.lastReviewedAt)}`
                               : ""}
                           </p>
+                          {history.reviewCues.length > 0 ? (
+                            <div className="pill-list pill-list--compact">
+                              {history.reviewCues.map((cue) => (
+                                <span className="pill" key={cue.label}>
+                                  {cue.label}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
                           <form action={saveModerationMemberNoteAction} className="form-card">
                             <input name="subjectKey" type="hidden" value={history.key} />
                             <input
