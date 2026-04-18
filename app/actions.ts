@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import {
   clearAdminLookupAccess,
   grantAdminLookupAccess,
+  hasAdminLookupAccess,
   isAdminLookupConfigured,
 } from "@/lib/admin-access";
 import {
@@ -27,18 +28,26 @@ import {
 } from "@/lib/catalog";
 import {
   createPasswordResetToken,
+  createModerationReport,
   createCommunityReply,
   createCommunityPost,
   createUser,
   deleteExpiredPasswordResetTokens,
   deletePasswordResetTokensForUser,
   deleteSessionsForUser,
+  getCommunityPostById,
+  getCommunityReplyById,
   getLatestPasswordResetTokenForUser,
+  getProfessionalById,
   getUserAuthByEmail,
   getUserByEmail,
   getPasswordResetToken,
   markPasswordResetTokenUsed,
+  setCommunityPostHidden,
+  setCommunityReplyHidden,
+  setProfessionalHidden,
   toggleSavedResource,
+  updateModerationReport,
   updateUserPassword,
   updateUserProfile,
 } from "@/lib/data";
@@ -47,19 +56,31 @@ import {
   sendPasswordResetEmail,
 } from "@/lib/email";
 import { hasPremiumAccess } from "@/lib/membership";
-import type { AgeGroup, GoalKey, UserRole } from "@/lib/app-types";
+import type {
+  AgeGroup,
+  GoalKey,
+  ModerationTargetType,
+  UserRole,
+} from "@/lib/app-types";
 import { formatRole } from "@/lib/formatters";
 import {
   getAppUrl,
   isClerkConfigured,
   isLocalDevelopment,
 } from "@/lib/platform";
+import { reportReasonOptions } from "@/lib/site-data";
 import { stripe, getStripePriceId, getStripeReturnUrl } from "@/lib/stripe";
 
 const validRoles = new Set(roleOptions.map((option) => option.value));
 const validAgeGroups = new Set(ageGroupOptions.map((option) => option.value));
 const validGoals = new Set(goalOptions.map((option) => option.value));
 const validTopics = new Set(communityTopicOptions);
+const validModerationTargets = new Set<ModerationTargetType>([
+  "community-post",
+  "community-reply",
+  "professional",
+]);
+const validReportReasons = new Set<string>(reportReasonOptions);
 const passwordResetRequestCooldownMs = 1000 * 60 * 5;
 
 export type ProfileActionState = {
@@ -70,6 +91,16 @@ export type ProfileActionState = {
 function buildPath(pathname: string, params: Record<string, string>) {
   const search = new URLSearchParams(params);
   return `${pathname}?${search.toString()}`;
+}
+
+function appendNoticeToPath(
+  pathname: string,
+  tone: "message" | "error",
+  value: string,
+) {
+  const url = new URL(pathname || "/", getAppUrl());
+  url.searchParams.set(tone, value);
+  return `${url.pathname}${url.search}${url.hash}`;
 }
 
 function pickGoals(formData: FormData) {
@@ -93,9 +124,66 @@ function pickAgeGroup(value: FormDataEntryValue | null) {
     : null;
 }
 
+function summarizeModerationText(value: string, maxLength = 180) {
+  const normalized = value.replace(/\s+/g, " ").trim();
+
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+async function getModerationTargetSnapshot(
+  targetType: ModerationTargetType,
+  targetId: string,
+) {
+  if (targetType === "community-post") {
+    const post = await getCommunityPostById(targetId, true);
+
+    if (!post) {
+      return null;
+    }
+
+    return {
+      targetLabel: post.title,
+      targetExcerpt: summarizeModerationText(post.body),
+      targetAuthor: post.authorName,
+    };
+  }
+
+  if (targetType === "community-reply") {
+    const reply = await getCommunityReplyById(targetId, true);
+
+    if (!reply) {
+      return null;
+    }
+
+    return {
+      targetLabel: "Community reply",
+      targetExcerpt: summarizeModerationText(reply.body),
+      targetAuthor: reply.authorName,
+    };
+  }
+
+  const professional = await getProfessionalById(targetId, true);
+
+  if (!professional) {
+    return null;
+  }
+
+  return {
+    targetLabel: `${professional.name} • ${professional.title}`,
+    targetExcerpt: summarizeModerationText(professional.summary),
+    targetAuthor: professional.name,
+  };
+}
+
 function revalidateAppShell() {
   revalidatePath("/");
   revalidatePath("/auth");
+  revalidatePath("/admin-tools/email-lookup");
+  revalidatePath("/admin-tools/moderation");
   revalidatePath("/community");
   revalidatePath("/dashboard");
   revalidatePath("/events");
@@ -642,5 +730,158 @@ export async function createCommunityReplyAction(formData: FormData) {
   revalidateAppShell();
   redirect(
     `/community?message=${encodeURIComponent("Your reply is now live.")}#${postId}`,
+  );
+}
+
+export async function submitModerationReportAction(formData: FormData) {
+  const currentUser = await requireCurrentUser();
+  const targetType = String(formData.get("targetType") ?? "");
+  const targetId = String(formData.get("targetId") ?? "");
+  const reason = String(formData.get("reason") ?? "");
+  const details = String(formData.get("details") ?? "").trim();
+  const returnTo = String(formData.get("returnTo") ?? "/community");
+
+  if (!validModerationTargets.has(targetType as ModerationTargetType) || !targetId) {
+    redirect(
+      appendNoticeToPath(
+        returnTo,
+        "error",
+        "We could not tell what you were trying to report.",
+      ),
+    );
+  }
+
+  if (!validReportReasons.has(reason)) {
+    redirect(
+      appendNoticeToPath(
+        returnTo,
+        "error",
+        "Choose the reason that best matches your concern.",
+      ),
+    );
+  }
+
+  const snapshot = await getModerationTargetSnapshot(
+    targetType as ModerationTargetType,
+    targetId,
+  );
+
+  if (!snapshot) {
+    redirect(
+      appendNoticeToPath(
+        returnTo,
+        "error",
+        "That item is no longer available to review.",
+      ),
+    );
+  }
+
+  await createModerationReport({
+    targetType: targetType as ModerationTargetType,
+    targetId,
+    reporterUserId: currentUser.id,
+    reporterName: currentUser.name,
+    reason,
+    details,
+    targetLabel: snapshot.targetLabel,
+    targetExcerpt: snapshot.targetExcerpt,
+    targetAuthor: snapshot.targetAuthor,
+  });
+
+  revalidatePath("/community");
+  revalidatePath("/professionals");
+  revalidatePath("/admin-tools/moderation");
+
+  redirect(
+    appendNoticeToPath(
+      returnTo,
+      "message",
+      "Thanks for speaking up. We’ll review that concern with care.",
+    ),
+  );
+}
+
+export async function reviewModerationReportAction(formData: FormData) {
+  if (!isAdminLookupConfigured()) {
+    redirect(
+      buildPath("/admin-tools/moderation", {
+        error: "Moderation access is not configured yet.",
+      }),
+    );
+  }
+
+  if (!(await hasAdminLookupAccess())) {
+    redirect(
+      buildPath("/admin-tools/moderation", {
+        error: "Unlock the moderation queue first.",
+      }),
+    );
+  }
+
+  const reportId = String(formData.get("reportId") ?? "");
+  const targetType = String(formData.get("targetType") ?? "");
+  const targetId = String(formData.get("targetId") ?? "");
+  const intent = String(formData.get("intent") ?? "");
+
+  if (!reportId || !targetId || !validModerationTargets.has(targetType as ModerationTargetType)) {
+    redirect(
+      buildPath("/admin-tools/moderation", {
+        error: "That moderation action was missing important details.",
+      }),
+    );
+  }
+
+  if (intent === "hide") {
+    if (targetType === "community-post") {
+      await setCommunityPostHidden(targetId, true);
+    } else if (targetType === "community-reply") {
+      await setCommunityReplyHidden(targetId, true);
+    } else {
+      await setProfessionalHidden(targetId, true);
+    }
+
+    await updateModerationReport(reportId, {
+      status: "resolved",
+      actionTaken: "hidden",
+    });
+  } else if (intent === "restore") {
+    if (targetType === "community-post") {
+      await setCommunityPostHidden(targetId, false);
+    } else if (targetType === "community-reply") {
+      await setCommunityReplyHidden(targetId, false);
+    } else {
+      await setProfessionalHidden(targetId, false);
+    }
+
+    await updateModerationReport(reportId, {
+      status: "resolved",
+      actionTaken: "restored",
+    });
+  } else if (intent === "dismiss") {
+    await updateModerationReport(reportId, {
+      status: "dismissed",
+      actionTaken: "dismissed",
+    });
+  } else if (intent === "review") {
+    await updateModerationReport(reportId, {
+      status: "reviewed",
+      actionTaken: "reviewed",
+    });
+  } else {
+    redirect(
+      buildPath("/admin-tools/moderation", {
+        error: "That moderation action was not recognized.",
+      }),
+    );
+  }
+
+  revalidatePath("/community");
+  revalidatePath("/professionals");
+  revalidatePath("/admin-tools/moderation");
+
+  redirect(
+    buildPath("/admin-tools/moderation", {
+      message: "The moderation queue has been updated.",
+    }),
   );
 }

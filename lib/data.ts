@@ -176,10 +176,22 @@ export async function listCommunityPosts(limit = 20) {
     : (await getLocal()).listCommunityPosts(limit);
 }
 
+export async function getCommunityPostById(postId: string, includeHidden = false) {
+  return isNeonConfigured
+    ? (await getHosted()).getCommunityPostById(postId, includeHidden)
+    : (await getLocal()).getCommunityPostById(postId, includeHidden);
+}
+
 export async function listCommunityReplies() {
   return isNeonConfigured
     ? (await getHosted()).listCommunityReplies()
     : (await getLocal()).listCommunityReplies();
+}
+
+export async function getCommunityReplyById(replyId: string, includeHidden = false) {
+  return isNeonConfigured
+    ? (await getHosted()).getCommunityReplyById(replyId, includeHidden)
+    : (await getLocal()).getCommunityReplyById(replyId, includeHidden);
 }
 
 export async function createCommunityPost(
@@ -202,4 +214,54 @@ export async function listProfessionals() {
   return isNeonConfigured
     ? (await getHosted()).listProfessionals()
     : (await getLocal()).listProfessionals();
+}
+
+export async function getProfessionalById(
+  professionalId: string,
+  includeHidden = false,
+) {
+  return isNeonConfigured
+    ? (await getHosted()).getProfessionalById(professionalId, includeHidden)
+    : (await getLocal()).getProfessionalById(professionalId, includeHidden);
+}
+
+export async function createModerationReport(
+  input: Parameters<LocalModule["createModerationReport"]>[0],
+) {
+  return isNeonConfigured
+    ? (await getHosted()).createModerationReport(input)
+    : (await getLocal()).createModerationReport(input);
+}
+
+export async function listModerationReports() {
+  return isNeonConfigured
+    ? (await getHosted()).listModerationReports()
+    : (await getLocal()).listModerationReports();
+}
+
+export async function updateModerationReport(
+  reportId: string,
+  input: Parameters<LocalModule["updateModerationReport"]>[1],
+) {
+  return isNeonConfigured
+    ? (await getHosted()).updateModerationReport(reportId, input)
+    : (await getLocal()).updateModerationReport(reportId, input);
+}
+
+export async function setCommunityPostHidden(postId: string, isHidden: boolean) {
+  return isNeonConfigured
+    ? (await getHosted()).setCommunityPostHidden(postId, isHidden)
+    : (await getLocal()).setCommunityPostHidden(postId, isHidden);
+}
+
+export async function setCommunityReplyHidden(replyId: string, isHidden: boolean) {
+  return isNeonConfigured
+    ? (await getHosted()).setCommunityReplyHidden(replyId, isHidden)
+    : (await getLocal()).setCommunityReplyHidden(replyId, isHidden);
+}
+
+export async function setProfessionalHidden(professionalId: string, isHidden: boolean) {
+  return isNeonConfigured
+    ? (await getHosted()).setProfessionalHidden(professionalId, isHidden)
+    : (await getLocal()).setProfessionalHidden(professionalId, isHidden);
 }

@@ -13,8 +13,13 @@ import type {
   AppUser,
   AuthProvider,
   CommunityPostRecord,
+  CommunityReplyRecord,
   EventRecord,
   MembershipTier,
+  ModerationActionTaken,
+  ModerationReportRecord,
+  ModerationReportStatus,
+  ModerationTargetType,
   ProfessionalRecord,
   ResourceRecord,
   SubscriptionStatus,
@@ -70,6 +75,7 @@ type CommunityRow = {
   title: string;
   body: string;
   created_at: string;
+  is_hidden: number;
 };
 
 type EventRow = {
@@ -97,6 +103,7 @@ type ProfessionalRow = {
   verified: number;
   href: string;
   region_tags: string;
+  is_hidden: number;
 };
 
 type CommunityReplyRow = {
@@ -107,6 +114,24 @@ type CommunityReplyRow = {
   author_role: string;
   body: string;
   created_at: string;
+  is_hidden: number;
+};
+
+type ModerationReportRow = {
+  id: string;
+  target_type: ModerationTargetType;
+  target_id: string;
+  reporter_user_id: string | null;
+  reporter_name: string;
+  reason: string;
+  details: string;
+  status: ModerationReportStatus;
+  action_taken: ModerationActionTaken;
+  target_label: string;
+  target_excerpt: string;
+  target_author: string;
+  created_at: string;
+  reviewed_at: string | null;
 };
 
 type SessionRow = {
@@ -273,6 +298,7 @@ function getDatabase() {
       tag TEXT NOT NULL,
       title TEXT NOT NULL,
       body TEXT NOT NULL,
+      is_hidden INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
     );
@@ -296,6 +322,7 @@ function getDatabase() {
       summary TEXT NOT NULL,
       accepting_new_families INTEGER NOT NULL DEFAULT 0,
       verified INTEGER NOT NULL DEFAULT 0,
+      is_hidden INTEGER NOT NULL DEFAULT 0,
       href TEXT NOT NULL DEFAULT '',
       region_tags TEXT NOT NULL DEFAULT '[]'
     );
@@ -307,9 +334,28 @@ function getDatabase() {
       author_name TEXT NOT NULL,
       author_role TEXT NOT NULL,
       body TEXT NOT NULL,
+      is_hidden INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
       FOREIGN KEY (post_id) REFERENCES community_posts(id) ON DELETE CASCADE,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS moderation_reports (
+      id TEXT PRIMARY KEY,
+      target_type TEXT NOT NULL,
+      target_id TEXT NOT NULL,
+      reporter_user_id TEXT,
+      reporter_name TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      details TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'open',
+      action_taken TEXT NOT NULL DEFAULT 'none',
+      target_label TEXT NOT NULL,
+      target_excerpt TEXT NOT NULL,
+      target_author TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      reviewed_at TEXT,
+      FOREIGN KEY (reporter_user_id) REFERENCES users(id) ON DELETE SET NULL
     );
   `);
 
@@ -426,6 +472,24 @@ function ensureContentColumns(database: DatabaseSync) {
     "region_tags",
     "region_tags TEXT NOT NULL DEFAULT '[]'",
   );
+  ensureColumn(
+    database,
+    "community_posts",
+    "is_hidden",
+    "is_hidden INTEGER NOT NULL DEFAULT 0",
+  );
+  ensureColumn(
+    database,
+    "community_replies",
+    "is_hidden",
+    "is_hidden INTEGER NOT NULL DEFAULT 0",
+  );
+  ensureColumn(
+    database,
+    "professionals",
+    "is_hidden",
+    "is_hidden INTEGER NOT NULL DEFAULT 0",
+  );
 
   database.exec(`
     CREATE TABLE IF NOT EXISTS community_replies (
@@ -435,6 +499,7 @@ function ensureContentColumns(database: DatabaseSync) {
       author_name TEXT NOT NULL,
       author_role TEXT NOT NULL,
       body TEXT NOT NULL,
+      is_hidden INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
       FOREIGN KEY (post_id) REFERENCES community_posts(id) ON DELETE CASCADE,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
@@ -461,6 +526,36 @@ function ensureContentColumns(database: DatabaseSync) {
   database.exec(`
     CREATE UNIQUE INDEX IF NOT EXISTS password_reset_tokens_token_hash_idx
     ON password_reset_tokens (token_hash)
+  `);
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS moderation_reports (
+      id TEXT PRIMARY KEY,
+      target_type TEXT NOT NULL,
+      target_id TEXT NOT NULL,
+      reporter_user_id TEXT,
+      reporter_name TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      details TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'open',
+      action_taken TEXT NOT NULL DEFAULT 'none',
+      target_label TEXT NOT NULL,
+      target_excerpt TEXT NOT NULL,
+      target_author TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      reviewed_at TEXT,
+      FOREIGN KEY (reporter_user_id) REFERENCES users(id) ON DELETE SET NULL
+    )
+  `);
+
+  database.exec(`
+    CREATE INDEX IF NOT EXISTS moderation_reports_status_idx
+    ON moderation_reports (status, created_at DESC)
+  `);
+
+  database.exec(`
+    CREATE INDEX IF NOT EXISTS moderation_reports_target_idx
+    ON moderation_reports (target_type, target_id)
   `);
 }
 
@@ -543,6 +638,7 @@ function toCommunityPost(row: CommunityRow): CommunityPostRecord {
     title: row.title,
     body: row.body,
     createdAt: row.created_at,
+    isHidden: Boolean(row.is_hidden),
   };
 }
 
@@ -559,10 +655,11 @@ function toProfessional(row: ProfessionalRow): ProfessionalRecord {
     verified: Boolean(row.verified),
     href: row.href,
     regionTags: parseJson<string[]>(row.region_tags, []),
+    isHidden: Boolean(row.is_hidden),
   };
 }
 
-function toCommunityReply(row: CommunityReplyRow) {
+function toCommunityReply(row: CommunityReplyRow): CommunityReplyRecord {
   return {
     id: row.id,
     postId: row.post_id,
@@ -571,6 +668,26 @@ function toCommunityReply(row: CommunityReplyRow) {
     authorRole: row.author_role,
     body: row.body,
     createdAt: row.created_at,
+    isHidden: Boolean(row.is_hidden),
+  };
+}
+
+function toModerationReport(row: ModerationReportRow): ModerationReportRecord {
+  return {
+    id: row.id,
+    targetType: row.target_type,
+    targetId: row.target_id,
+    reporterUserId: row.reporter_user_id,
+    reporterName: row.reporter_name,
+    reason: row.reason,
+    details: row.details,
+    status: row.status,
+    actionTaken: row.action_taken,
+    targetLabel: row.target_label,
+    targetExcerpt: row.target_excerpt,
+    targetAuthor: row.target_author,
+    createdAt: row.created_at,
+    reviewedAt: row.reviewed_at,
   };
 }
 
@@ -1140,14 +1257,53 @@ export function listCommunityPosts(limit = 20) {
         tag,
         title,
         body,
-        created_at
+        created_at,
+        is_hidden
       FROM community_posts
+      WHERE is_hidden = 0
       ORDER BY created_at DESC
       LIMIT ?
     `)
     .all(limit) as CommunityRow[];
 
   return rows.map(toCommunityPost);
+}
+
+export function getCommunityPostById(postId: string, includeHidden = false) {
+  const query = includeHidden
+    ? `
+        SELECT
+          id,
+          user_id,
+          author_name,
+          author_role,
+          topic,
+          tag,
+          title,
+          body,
+          created_at,
+          is_hidden
+        FROM community_posts
+        WHERE id = ?
+      `
+    : `
+        SELECT
+          id,
+          user_id,
+          author_name,
+          author_role,
+          topic,
+          tag,
+          title,
+          body,
+          created_at,
+          is_hidden
+        FROM community_posts
+        WHERE id = ? AND is_hidden = 0
+      `;
+
+  const row = database().prepare(query).get(postId) as CommunityRow | undefined;
+  return row ? toCommunityPost(row) : undefined;
 }
 
 export function listCommunityReplies() {
@@ -1160,13 +1316,48 @@ export function listCommunityReplies() {
         author_name,
         author_role,
         body,
-        created_at
+        created_at,
+        is_hidden
       FROM community_replies
+      WHERE is_hidden = 0
       ORDER BY created_at ASC
     `)
     .all() as CommunityReplyRow[];
 
   return rows.map(toCommunityReply);
+}
+
+export function getCommunityReplyById(replyId: string, includeHidden = false) {
+  const query = includeHidden
+    ? `
+        SELECT
+          id,
+          post_id,
+          user_id,
+          author_name,
+          author_role,
+          body,
+          created_at,
+          is_hidden
+        FROM community_replies
+        WHERE id = ?
+      `
+    : `
+        SELECT
+          id,
+          post_id,
+          user_id,
+          author_name,
+          author_role,
+          body,
+          created_at,
+          is_hidden
+        FROM community_replies
+        WHERE id = ? AND is_hidden = 0
+      `;
+
+  const row = database().prepare(query).get(replyId) as CommunityReplyRow | undefined;
+  return row ? toCommunityReply(row) : undefined;
 }
 
 export function createCommunityPost(input: {
@@ -1188,8 +1379,9 @@ export function createCommunityPost(input: {
       tag,
       title,
       body,
+      is_hidden,
       created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     randomUUID(),
     input.userId,
@@ -1199,6 +1391,7 @@ export function createCommunityPost(input: {
     input.tag,
     input.title,
     input.body,
+    0,
     new Date().toISOString(),
   );
 }
@@ -1218,8 +1411,9 @@ export function createCommunityReply(input: {
       author_name,
       author_role,
       body,
+      is_hidden,
       created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     randomUUID(),
     input.postId,
@@ -1227,6 +1421,7 @@ export function createCommunityReply(input: {
     input.authorName,
     input.authorRole,
     input.body,
+    0,
     new Date().toISOString(),
   );
 }
@@ -1245,11 +1440,173 @@ export function listProfessionals() {
         accepting_new_families,
         verified,
         href,
-        region_tags
+        region_tags,
+        is_hidden
       FROM professionals
+      WHERE is_hidden = 0
       ORDER BY verified DESC, accepting_new_families DESC, name ASC
     `)
     .all() as ProfessionalRow[];
 
   return rows.map(toProfessional);
+}
+
+export function getProfessionalById(professionalId: string, includeHidden = false) {
+  const query = includeHidden
+    ? `
+        SELECT
+          id,
+          name,
+          title,
+          focus,
+          organization,
+          location,
+          summary,
+          accepting_new_families,
+          verified,
+          href,
+          region_tags,
+          is_hidden
+        FROM professionals
+        WHERE id = ?
+      `
+    : `
+        SELECT
+          id,
+          name,
+          title,
+          focus,
+          organization,
+          location,
+          summary,
+          accepting_new_families,
+          verified,
+          href,
+          region_tags,
+          is_hidden
+        FROM professionals
+        WHERE id = ? AND is_hidden = 0
+      `;
+
+  const row = database().prepare(query).get(professionalId) as ProfessionalRow | undefined;
+  return row ? toProfessional(row) : undefined;
+}
+
+export function createModerationReport(input: {
+  targetType: ModerationTargetType;
+  targetId: string;
+  reporterUserId: string | null;
+  reporterName: string;
+  reason: string;
+  details: string;
+  targetLabel: string;
+  targetExcerpt: string;
+  targetAuthor: string;
+}) {
+  const reportId = randomUUID();
+
+  database().prepare(`
+    INSERT INTO moderation_reports (
+      id,
+      target_type,
+      target_id,
+      reporter_user_id,
+      reporter_name,
+      reason,
+      details,
+      status,
+      action_taken,
+      target_label,
+      target_excerpt,
+      target_author,
+      created_at,
+      reviewed_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    reportId,
+    input.targetType,
+    input.targetId,
+    input.reporterUserId,
+    input.reporterName,
+    input.reason,
+    input.details,
+    "open",
+    "none",
+    input.targetLabel,
+    input.targetExcerpt,
+    input.targetAuthor,
+    new Date().toISOString(),
+    null,
+  );
+
+  return reportId;
+}
+
+export function listModerationReports() {
+  const rows = database()
+    .prepare(`
+      SELECT
+        id,
+        target_type,
+        target_id,
+        reporter_user_id,
+        reporter_name,
+        reason,
+        details,
+        status,
+        action_taken,
+        target_label,
+        target_excerpt,
+        target_author,
+        created_at,
+        reviewed_at
+      FROM moderation_reports
+      ORDER BY
+        CASE status
+          WHEN 'open' THEN 0
+          WHEN 'reviewed' THEN 1
+          WHEN 'resolved' THEN 2
+          ELSE 3
+        END,
+        created_at DESC
+    `)
+    .all() as ModerationReportRow[];
+
+  return rows.map(toModerationReport);
+}
+
+export function updateModerationReport(
+  reportId: string,
+  input: {
+    status: ModerationReportStatus;
+    actionTaken: ModerationActionTaken;
+  },
+) {
+  database()
+    .prepare(
+      `
+        UPDATE moderation_reports
+        SET status = ?, action_taken = ?, reviewed_at = ?
+        WHERE id = ?
+      `,
+    )
+    .run(input.status, input.actionTaken, new Date().toISOString(), reportId);
+}
+
+export function setCommunityPostHidden(postId: string, isHidden: boolean) {
+  database()
+    .prepare("UPDATE community_posts SET is_hidden = ? WHERE id = ?")
+    .run(isHidden ? 1 : 0, postId);
+}
+
+export function setCommunityReplyHidden(replyId: string, isHidden: boolean) {
+  database()
+    .prepare("UPDATE community_replies SET is_hidden = ? WHERE id = ?")
+    .run(isHidden ? 1 : 0, replyId);
+}
+
+export function setProfessionalHidden(professionalId: string, isHidden: boolean) {
+  database()
+    .prepare("UPDATE professionals SET is_hidden = ? WHERE id = ?")
+    .run(isHidden ? 1 : 0, professionalId);
 }

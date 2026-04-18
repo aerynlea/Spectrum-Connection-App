@@ -5,6 +5,7 @@ import {
   createCommunityPostAction,
   createCommunityReplyAction,
 } from "@/app/actions";
+import { ReportConcernForm } from "@/components/report-concern-form";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusBanner } from "@/components/status-banner";
 import { getCurrentUser } from "@/lib/auth";
@@ -18,6 +19,12 @@ import { communityTopics, safetyCommitments } from "@/lib/site-data";
 type CommunityPageProps = {
   searchParams?: PageSearchParams;
 };
+
+function getTrustLabel(authorRole: string) {
+  return authorRole.toLowerCase().includes("professional")
+    ? "Professional insight"
+    : "Community voice";
+}
 
 export default async function CommunityPage({
   searchParams,
@@ -162,16 +169,31 @@ export default async function CommunityPage({
                   <span className="tag-chip">{thread.tag}</span>
                 </div>
                 <h4>{thread.title}</h4>
+                <p className="feature-label">{getTrustLabel(thread.authorRole)}</p>
                 <p>{thread.body}</p>
                 <p className="meta-copy">{thread.topic}</p>
+                <ReportConcernForm
+                  canReport={Boolean(currentUser)}
+                  returnTo={`/community#${thread.id}`}
+                  targetId={thread.id}
+                  targetType="community-post"
+                />
                 <div className="reply-list">
                   {(repliesByPost.get(thread.id) ?? []).map((reply) => (
-                    <article className="reply-card" key={reply.id}>
+                    <article className="reply-card" id={reply.id} key={reply.id}>
                       <p className="feature-label">
                         {reply.authorName} • {reply.authorRole} •{" "}
                         {formatDateTime(reply.createdAt)}
                       </p>
                       <p>{reply.body}</p>
+                      <p className="meta-copy">{getTrustLabel(reply.authorRole)}</p>
+                      <ReportConcernForm
+                        canReport={Boolean(currentUser)}
+                        compact
+                        returnTo={`/community#${reply.id}`}
+                        targetId={reply.id}
+                        targetType="community-reply"
+                      />
                     </article>
                   ))}
                 </div>
@@ -201,8 +223,8 @@ export default async function CommunityPage({
         <div className="section-panel section-panel--accent">
           <SectionHeading
             eyebrow="Safety"
-            intro="Clear expectations help people share openly, feel respected, and return with confidence."
-            title="Safety and kindness come first."
+            intro="Clear expectations, private reporting, and gentle moderation help people share openly and return with confidence."
+            title="Safety, trust, and kindness come first."
           />
           <ul className="bullet-list bullet-list--wide">
             {safetyCommitments.map((commitment) => (

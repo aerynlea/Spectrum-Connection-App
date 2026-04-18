@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 
+import { ReportConcernForm } from "@/components/report-concern-form";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusBanner } from "@/components/status-banner";
 import { getCurrentUser } from "@/lib/auth";
@@ -60,7 +61,7 @@ export default async function ProfessionalsPage({
           />
           <div className="stack-list">
             {featuredProfessionals.map((professional) => (
-              <article className="thread-card" key={professional.id}>
+              <article className="thread-card" id={professional.id} key={professional.id}>
                 <div className="thread-card__meta">
                   <div>
                     <h3>{professional.name}</h3>
@@ -75,8 +76,18 @@ export default async function ProfessionalsPage({
                   </span>
                 </div>
                 <h4>{professional.focus}</h4>
+                <p className="feature-label">
+                  {professional.verified
+                    ? "Verified professional"
+                    : "Community-sourced listing"}
+                </p>
                 <p>{professional.summary}</p>
                 <p className="meta-copy">{professional.location}</p>
+                <p className="meta-copy">
+                  {professional.verified
+                    ? "Credential review and public profile check completed."
+                    : "Shared for exploration while the trust review is still pending."}
+                </p>
                 <Link
                   className="text-link"
                   href={professional.href}
@@ -85,6 +96,12 @@ export default async function ProfessionalsPage({
                 >
                   Visit their site
                 </Link>
+                <ReportConcernForm
+                  canReport={Boolean(currentUser)}
+                  returnTo={`/professionals#${professional.id}`}
+                  targetId={professional.id}
+                  targetType="professional"
+                />
               </article>
             ))}
           </div>
@@ -93,7 +110,7 @@ export default async function ProfessionalsPage({
         <div className="section-panel section-panel--accent">
           <SectionHeading
             eyebrow="How trust is earned"
-            intro="Families deserve clarity about who they are hearing from and why that voice can be trusted."
+            intro="Families deserve clarity about who they are hearing from, how profiles are reviewed, and how to flag anything that feels off."
             title="How professionals are reviewed."
           />
           <div className="support-steps">

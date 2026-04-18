@@ -17,6 +17,10 @@ import type {
   EventRecord,
   GoalKey,
   MembershipTier,
+  ModerationActionTaken,
+  ModerationReportRecord,
+  ModerationReportStatus,
+  ModerationTargetType,
   ProfessionalRecord,
   ResourceRecord,
   SubscriptionStatus,
@@ -100,6 +104,7 @@ type ProfessionalRow = {
   verified: boolean;
   href: string;
   region_tags: string;
+  isHidden: boolean;
 };
 
 type CommunityReplyRow = {
@@ -110,6 +115,24 @@ type CommunityReplyRow = {
   authorRole: string;
   body: string;
   createdAt: string;
+  isHidden: boolean;
+};
+
+type ModerationReportRow = {
+  id: string;
+  targetType: ModerationTargetType;
+  targetId: string;
+  reporterUserId: string | null;
+  reporterName: string;
+  reason: string;
+  details: string;
+  status: ModerationReportStatus;
+  actionTaken: ModerationActionTaken;
+  targetLabel: string;
+  targetExcerpt: string;
+  targetAuthor: string;
+  createdAt: string;
+  reviewedAt: string | null;
 };
 
 type StatsRow = {
@@ -252,6 +275,7 @@ function toProfessional(row: ProfessionalRow): ProfessionalRecord {
     verified: Boolean(row.verified),
     href: row.href,
     regionTags: parseJson<string[]>(row.region_tags, []),
+    isHidden: Boolean(row.isHidden),
   };
 }
 
@@ -264,6 +288,26 @@ function toCommunityReply(row: CommunityReplyRow): CommunityReplyRecord {
     authorRole: row.authorRole,
     body: row.body,
     createdAt: row.createdAt,
+    isHidden: Boolean(row.isHidden),
+  };
+}
+
+function toModerationReport(row: ModerationReportRow): ModerationReportRecord {
+  return {
+    id: row.id,
+    targetType: row.targetType,
+    targetId: row.targetId,
+    reporterUserId: row.reporterUserId,
+    reporterName: row.reporterName,
+    reason: row.reason,
+    details: row.details,
+    status: row.status,
+    actionTaken: row.actionTaken,
+    targetLabel: row.targetLabel,
+    targetExcerpt: row.targetExcerpt,
+    targetAuthor: row.targetAuthor,
+    createdAt: row.createdAt,
+    reviewedAt: row.reviewedAt,
   };
 }
 
@@ -423,8 +467,14 @@ async function seedHostedDatabase() {
       tag TEXT NOT NULL,
       title TEXT NOT NULL,
       body TEXT NOT NULL,
+      is_hidden BOOLEAN NOT NULL DEFAULT false,
       created_at TEXT NOT NULL
     )
+  `);
+
+  await sql.query(`
+    ALTER TABLE community_posts
+    ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT false
   `);
 
   await sql.query(`
@@ -447,9 +497,15 @@ async function seedHostedDatabase() {
       summary TEXT NOT NULL,
       accepting_new_families BOOLEAN NOT NULL DEFAULT false,
       verified BOOLEAN NOT NULL DEFAULT false,
+      is_hidden BOOLEAN NOT NULL DEFAULT false,
       href TEXT NOT NULL DEFAULT '',
       region_tags TEXT NOT NULL DEFAULT '[]'
     )
+  `);
+
+  await sql.query(`
+    ALTER TABLE professionals
+    ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT false
   `);
 
   await sql.query(`
@@ -470,8 +526,43 @@ async function seedHostedDatabase() {
       author_name TEXT NOT NULL,
       author_role TEXT NOT NULL,
       body TEXT NOT NULL,
+      is_hidden BOOLEAN NOT NULL DEFAULT false,
       created_at TEXT NOT NULL
     )
+  `);
+
+  await sql.query(`
+    ALTER TABLE community_replies
+    ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT false
+  `);
+
+  await sql.query(`
+    CREATE TABLE IF NOT EXISTS moderation_reports (
+      id TEXT PRIMARY KEY,
+      target_type TEXT NOT NULL,
+      target_id TEXT NOT NULL,
+      reporter_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      reporter_name TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      details TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'open',
+      action_taken TEXT NOT NULL DEFAULT 'none',
+      target_label TEXT NOT NULL,
+      target_excerpt TEXT NOT NULL,
+      target_author TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      reviewed_at TEXT
+    )
+  `);
+
+  await sql.query(`
+    CREATE INDEX IF NOT EXISTS moderation_reports_status_idx
+    ON moderation_reports (status, created_at DESC)
+  `);
+
+  await sql.query(`
+    CREATE INDEX IF NOT EXISTS moderation_reports_target_idx
+    ON moderation_reports (target_type, target_id)
   `);
 
   for (const resource of resourceSeeds) {
@@ -1199,11 +1290,55 @@ export async function listCommunityPosts(limit = 20) {
       tag,
       title,
       body,
-      created_at AS "createdAt"
+      created_at AS "createdAt",
+      is_hidden AS "isHidden"
     FROM community_posts
+    WHERE is_hidden = false
     ORDER BY created_at DESC
     LIMIT ${limit}
   `) as CommunityPostRecord[];
+}
+
+export async function getCommunityPostById(postId: string, includeHidden = false) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  const rows = (await sql.query(
+    includeHidden
+      ? `
+        SELECT
+          id,
+          user_id AS "userId",
+          author_name AS "authorName",
+          author_role AS "authorRole",
+          topic,
+          tag,
+          title,
+          body,
+          created_at AS "createdAt",
+          is_hidden AS "isHidden"
+        FROM community_posts
+        WHERE id = $1
+      `
+      : `
+        SELECT
+          id,
+          user_id AS "userId",
+          author_name AS "authorName",
+          author_role AS "authorRole",
+          topic,
+          tag,
+          title,
+          body,
+          created_at AS "createdAt",
+          is_hidden AS "isHidden"
+        FROM community_posts
+        WHERE id = $1 AND is_hidden = false
+      `,
+    [postId],
+  )) as CommunityPostRecord[];
+
+  return rows[0];
 }
 
 export async function listCommunityReplies() {
@@ -1218,12 +1353,52 @@ export async function listCommunityReplies() {
       author_name AS "authorName",
       author_role AS "authorRole",
       body,
-      created_at AS "createdAt"
+      created_at AS "createdAt",
+      is_hidden AS "isHidden"
     FROM community_replies
+    WHERE is_hidden = false
     ORDER BY created_at ASC
   `) as CommunityReplyRow[];
 
   return rows.map(toCommunityReply);
+}
+
+export async function getCommunityReplyById(replyId: string, includeHidden = false) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  const rows = (await sql.query(
+    includeHidden
+      ? `
+        SELECT
+          id,
+          post_id AS "postId",
+          user_id AS "userId",
+          author_name AS "authorName",
+          author_role AS "authorRole",
+          body,
+          created_at AS "createdAt",
+          is_hidden AS "isHidden"
+        FROM community_replies
+        WHERE id = $1
+      `
+      : `
+        SELECT
+          id,
+          post_id AS "postId",
+          user_id AS "userId",
+          author_name AS "authorName",
+          author_role AS "authorRole",
+          body,
+          created_at AS "createdAt",
+          is_hidden AS "isHidden"
+        FROM community_replies
+        WHERE id = $1 AND is_hidden = false
+      `,
+    [replyId],
+  )) as CommunityReplyRow[];
+
+  return rows[0] ? toCommunityReply(rows[0]) : undefined;
 }
 
 export async function createCommunityPost(input: {
@@ -1248,6 +1423,7 @@ export async function createCommunityPost(input: {
       tag,
       title,
       body,
+      is_hidden,
       created_at
     ) VALUES (
       ${randomUUID()},
@@ -1258,6 +1434,7 @@ export async function createCommunityPost(input: {
       ${input.tag},
       ${input.title},
       ${input.body},
+      ${false},
       ${new Date().toISOString()}
     )
   `;
@@ -1281,6 +1458,7 @@ export async function createCommunityReply(input: {
       author_name,
       author_role,
       body,
+      is_hidden,
       created_at
     ) VALUES (
       ${randomUUID()},
@@ -1289,6 +1467,7 @@ export async function createCommunityReply(input: {
       ${input.authorName},
       ${input.authorRole},
       ${input.body},
+      ${false},
       ${new Date().toISOString()}
     )
   `;
@@ -1310,10 +1489,197 @@ export async function listProfessionals() {
       accepting_new_families AS "acceptingNewFamilies",
       verified,
       href,
-      region_tags
+      region_tags,
+      is_hidden AS "isHidden"
     FROM professionals
+    WHERE is_hidden = false
     ORDER BY verified DESC, accepting_new_families DESC, name ASC
   `) as ProfessionalRow[];
 
   return rows.map(toProfessional);
+}
+
+export async function getProfessionalById(professionalId: string, includeHidden = false) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  const rows = (await sql.query(
+    includeHidden
+      ? `
+        SELECT
+          id,
+          name,
+          title,
+          focus,
+          organization,
+          location,
+          summary,
+          accepting_new_families AS "acceptingNewFamilies",
+          verified,
+          href,
+          region_tags,
+          is_hidden AS "isHidden"
+        FROM professionals
+        WHERE id = $1
+      `
+      : `
+        SELECT
+          id,
+          name,
+          title,
+          focus,
+          organization,
+          location,
+          summary,
+          accepting_new_families AS "acceptingNewFamilies",
+          verified,
+          href,
+          region_tags,
+          is_hidden AS "isHidden"
+        FROM professionals
+        WHERE id = $1 AND is_hidden = false
+      `,
+    [professionalId],
+  )) as ProfessionalRow[];
+
+  return rows[0] ? toProfessional(rows[0]) : undefined;
+}
+
+export async function createModerationReport(input: {
+  targetType: ModerationTargetType;
+  targetId: string;
+  reporterUserId: string | null;
+  reporterName: string;
+  reason: string;
+  details: string;
+  targetLabel: string;
+  targetExcerpt: string;
+  targetAuthor: string;
+}) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+  const reportId = randomUUID();
+
+  await sql`
+    INSERT INTO moderation_reports (
+      id,
+      target_type,
+      target_id,
+      reporter_user_id,
+      reporter_name,
+      reason,
+      details,
+      status,
+      action_taken,
+      target_label,
+      target_excerpt,
+      target_author,
+      created_at,
+      reviewed_at
+    ) VALUES (
+      ${reportId},
+      ${input.targetType},
+      ${input.targetId},
+      ${input.reporterUserId},
+      ${input.reporterName},
+      ${input.reason},
+      ${input.details},
+      ${"open"},
+      ${"none"},
+      ${input.targetLabel},
+      ${input.targetExcerpt},
+      ${input.targetAuthor},
+      ${new Date().toISOString()},
+      ${null}
+    )
+  `;
+
+  return reportId;
+}
+
+export async function listModerationReports() {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  const rows = (await sql`
+    SELECT
+      id,
+      target_type AS "targetType",
+      target_id AS "targetId",
+      reporter_user_id AS "reporterUserId",
+      reporter_name AS "reporterName",
+      reason,
+      details,
+      status,
+      action_taken AS "actionTaken",
+      target_label AS "targetLabel",
+      target_excerpt AS "targetExcerpt",
+      target_author AS "targetAuthor",
+      created_at AS "createdAt",
+      reviewed_at AS "reviewedAt"
+    FROM moderation_reports
+    ORDER BY
+      CASE status
+        WHEN 'open' THEN 0
+        WHEN 'reviewed' THEN 1
+        WHEN 'resolved' THEN 2
+        ELSE 3
+      END,
+      created_at DESC
+  `) as ModerationReportRow[];
+
+  return rows.map(toModerationReport);
+}
+
+export async function updateModerationReport(
+  reportId: string,
+  input: {
+    status: ModerationReportStatus;
+    actionTaken: ModerationActionTaken;
+  },
+) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  await sql`
+    UPDATE moderation_reports
+    SET
+      status = ${input.status},
+      action_taken = ${input.actionTaken},
+      reviewed_at = ${new Date().toISOString()}
+    WHERE id = ${reportId}
+  `;
+}
+
+export async function setCommunityPostHidden(postId: string, isHidden: boolean) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  await sql`
+    UPDATE community_posts
+    SET is_hidden = ${isHidden}
+    WHERE id = ${postId}
+  `;
+}
+
+export async function setCommunityReplyHidden(replyId: string, isHidden: boolean) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  await sql`
+    UPDATE community_replies
+    SET is_hidden = ${isHidden}
+    WHERE id = ${replyId}
+  `;
+}
+
+export async function setProfessionalHidden(professionalId: string, isHidden: boolean) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  await sql`
+    UPDATE professionals
+    SET is_hidden = ${isHidden}
+    WHERE id = ${professionalId}
+  `;
 }

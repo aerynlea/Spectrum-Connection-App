@@ -1234,6 +1234,36 @@ a {
   font-weight: 800;
 }
 
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--card-soft-border);
+  border-radius: 999px;
+  background: var(--button-secondary-bg);
+  color: var(--text);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.status-chip--open {
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+}
+
+.status-chip--reviewed {
+  background: color-mix(in srgb, var(--secondary) 20%, transparent);
+}
+
+.status-chip--resolved {
+  background: color-mix(in srgb, #79d7a8 18%, transparent);
+}
+
+.status-chip--dismissed {
+  background: color-mix(in srgb, var(--muted) 16%, transparent);
+}
+
 .text-link {
   align-self: flex-start;
   margin-top: 1.2rem;
@@ -1446,6 +1476,40 @@ a {
   color: var(--text);
   font: inherit;
   resize: vertical;
+}
+
+.report-panel {
+  margin-top: 1rem;
+  border-top: 1px solid var(--card-soft-border);
+  padding-top: 1rem;
+}
+
+.report-panel--compact {
+  margin-top: 0.8rem;
+}
+
+.report-panel__summary {
+  cursor: pointer;
+  list-style: none;
+  color: var(--primary);
+  font-weight: 800;
+}
+
+.report-panel__summary::-webkit-details-marker {
+  display: none;
+}
+
+.report-panel__content {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 0.85rem;
+}
+
+.report-panel__support {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.94rem;
+  line-height: 1.65;
 }
 
 .support-step {

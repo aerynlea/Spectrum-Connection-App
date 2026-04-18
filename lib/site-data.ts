@@ -396,3 +396,11 @@ export const safetyCommitments = [
   "Clear reporting options make it easy to flag misinformation or harmful interactions.",
   "Verified guidance is clearly labeled so users can distinguish clinical advice from lived experience.",
 ];
+
+export const reportReasonOptions = [
+  "Misinformation or unsafe advice",
+  "Unkind or harmful interaction",
+  "Spam or self-promotion",
+  "Privacy concern",
+  "Something else",
+] as const;

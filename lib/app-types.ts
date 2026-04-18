@@ -6,6 +6,17 @@ export type UserRole =
 export type AuthProvider = "local" | "clerk";
 
 export type MembershipTier = "free" | "premium";
+export type ModerationTargetType =
+  | "community-post"
+  | "community-reply"
+  | "professional";
+export type ModerationReportStatus = "open" | "reviewed" | "dismissed" | "resolved";
+export type ModerationActionTaken =
+  | "none"
+  | "reviewed"
+  | "hidden"
+  | "restored"
+  | "dismissed";
 
 export type SubscriptionStatus =
   | "inactive"
@@ -95,6 +106,7 @@ export type CommunityPostRecord = {
   title: string;
   body: string;
   createdAt: string;
+  isHidden: boolean;
 };
 
 export type CommunityReplyRecord = {
@@ -105,6 +117,7 @@ export type CommunityReplyRecord = {
   authorRole: string;
   body: string;
   createdAt: string;
+  isHidden: boolean;
 };
 
 export type ProfessionalRecord = {
@@ -119,6 +132,24 @@ export type ProfessionalRecord = {
   verified: boolean;
   href: string;
   regionTags: string[];
+  isHidden: boolean;
+};
+
+export type ModerationReportRecord = {
+  id: string;
+  targetType: ModerationTargetType;
+  targetId: string;
+  reporterUserId: string | null;
+  reporterName: string;
+  reason: string;
+  details: string;
+  status: ModerationReportStatus;
+  actionTaken: ModerationActionTaken;
+  targetLabel: string;
+  targetExcerpt: string;
+  targetAuthor: string;
+  createdAt: string;
+  reviewedAt: string | null;
 };
 
 export type RecommendationRecord = ResourceRecord & {

@@ -159,11 +159,16 @@ export default async function EmailLookupPage({
               </div>
             </form>
 
-            <form action={lockAdminLookupAction} className="form-card">
-              <button className="button-secondary" type="submit">
-                Lock tool
-              </button>
-            </form>
+            <div className="button-row">
+              <Link className="button-secondary" href="/admin-tools/moderation">
+                Open moderation queue
+              </Link>
+              <form action={lockAdminLookupAction}>
+                <button className="button-secondary" type="submit">
+                  Lock tool
+                </button>
+              </form>
+            </div>
 
             {email ? (
               <div className="feature-card">
