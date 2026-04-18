@@ -5,6 +5,7 @@ import { ResourceCard } from "@/components/resources/resource-card";
 import { SectionHeading } from "@/components/section-heading";
 import { getCurrentUser } from "@/lib/auth";
 import { listResources } from "@/lib/data";
+import { buildResourceCollectionPath } from "@/lib/resources";
 
 type ListedResource = Awaited<ReturnType<typeof listResources>>[number];
 
@@ -187,10 +188,7 @@ export default async function CaliforniaGuidePage() {
         <div className="button-row">
           <Link
             className="button-primary"
-            href={{
-              pathname: "/resources",
-              query: { collection: "California School and Insurance Help" },
-            }}
+            href={buildResourceCollectionPath("school-insurance-help")}
           >
             Browse California support
           </Link>

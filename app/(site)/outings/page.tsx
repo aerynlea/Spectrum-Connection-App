@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { listEvents, listResources } from "@/lib/data";
 import { formatDateTime, formatMonthDay } from "@/lib/formatters";
 import { partitionByLocation } from "@/lib/location";
+import { buildResourceCollectionPath } from "@/lib/resources";
 
 type ListedResource = Awaited<ReturnType<typeof listResources>>[number];
 
@@ -199,29 +200,29 @@ export default async function OutingsPage() {
 
             return (
               <article className="event-card event-card--full" key={event.id}>
-                <div className="event-date">
-                  <span>{month}</span>
-                  <strong>{day}</strong>
-                </div>
-                <div className="event-card__body">
-                  <p className="feature-label">
-                    {event.audience} • {event.format}
-                  </p>
-                  <h3>{event.title}</h3>
-                  <p>{event.detail}</p>
-                  <p className="event-meta">
-                    {formatDateTime(event.eventDate)} • {event.location} • Hosted by{" "}
-                    {event.hostName}
-                  </p>
-                  <Link
-                    className="text-link"
-                    href={event.href}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    Open official event page
-                  </Link>
-                </div>
+                <Link
+                  className="event-card__content-link"
+                  href={event.href}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  <div className="event-date">
+                    <span>{month}</span>
+                    <strong>{day}</strong>
+                  </div>
+                  <div className="event-card__body">
+                    <p className="feature-label">
+                      {event.audience} • {event.format}
+                    </p>
+                    <h3>{event.title}</h3>
+                    <p>{event.detail}</p>
+                    <p className="event-meta">
+                      {formatDateTime(event.eventDate)} • {event.location} • Hosted by{" "}
+                      {event.hostName}
+                    </p>
+                    <span className="event-card__cta">Open official event page</span>
+                  </div>
+                </Link>
               </article>
             );
           })}
@@ -240,10 +241,7 @@ export default async function OutingsPage() {
         <div className="button-row">
           <Link
             className="button-primary"
-            href={{
-              pathname: "/resources",
-              query: { collection: "Theme Parks and Outings" },
-            }}
+            href={buildResourceCollectionPath("theme-park-outings")}
           >
             Browse outing links
           </Link>

@@ -11,7 +11,10 @@ import { formatMonthDay } from "@/lib/formatters";
 import { homeGlobalHighlights } from "@/lib/global-voices";
 import { isClerkConfigured } from "@/lib/platform";
 import { buildRecommendations } from "@/lib/recommendations";
-import { getResourceQuickStartSummaries } from "@/lib/resources";
+import {
+  buildResourceCollectionPath,
+  getResourceQuickStartSummaries,
+} from "@/lib/resources";
 import { getQueryMessage, type PageSearchParams } from "@/lib/search-params";
 import {
   ageTracks,
@@ -282,10 +285,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           {digitalQuickStarts.map((quickStart) => (
             <Link
               className="feature-card"
-              href={{
-                pathname: "/resources",
-                query: { collection: quickStart.collectionName },
-              }}
+              href={buildResourceCollectionPath(quickStart.slug)}
               key={quickStart.slug}
             >
               <p className="feature-label">
@@ -424,8 +424,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           <Link className="button-secondary" href="/community">
             See community conversations
           </Link>
-          <Link className="button-secondary" href="/membership">
-            Explore membership
+          <Link className="button-secondary" href="/events">
+            Explore upcoming events
           </Link>
         </div>
       </section>

@@ -23,6 +23,22 @@ export function getResourceById(resources: DirectoryResource[], id: string) {
   return resources.find((resource) => resource.id === id);
 }
 
+export function buildResourceCollectionPath(slug: string) {
+  return `/resources/collections/${slug}`;
+}
+
+export function getResourceQuickStartBySlug(slug: string) {
+  return resourceQuickStarts.find((quickStart) => quickStart.slug === slug) ?? null;
+}
+
+export function getResourceQuickStartByCollectionName(collectionName: string) {
+  return (
+    resourceQuickStarts.find(
+      (quickStart) => quickStart.collectionName === collectionName,
+    ) ?? null
+  );
+}
+
 export function getFilteredResources(
   resources: DirectoryResource[],
   filters: ResourceDirectoryFilters,

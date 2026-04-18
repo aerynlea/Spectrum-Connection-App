@@ -1216,6 +1216,24 @@ a {
   margin: 0.25rem 0 0;
 }
 
+.resource-card__body-link,
+.event-card__content-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.resource-card__body-link {
+  display: grid;
+  gap: 0.95rem;
+}
+
+.resource-card__body-link:hover .resource-card__cta,
+.resource-card__body-link:focus-visible .resource-card__cta,
+.event-card__content-link:hover .event-card__cta,
+.event-card__content-link:focus-visible .event-card__cta {
+  color: var(--primary);
+}
+
 .thread-card h4 {
   margin-top: 1rem;
   font-size: 1.12rem;
@@ -1412,6 +1430,18 @@ a {
   align-items: center;
 }
 
+.event-card__content-link {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.event-card--full .event-card__content-link {
+  align-items: center;
+}
+
 .resource-card__header {
   margin-bottom: 1rem;
 }
@@ -1432,6 +1462,25 @@ a {
   margin-top: 1rem;
   color: var(--muted);
   flex-wrap: wrap;
+}
+
+.resource-card__cta,
+.event-card__cta {
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.resource-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+
+.resource-actions .text-link {
+  margin-top: 0;
 }
 
 .resource-actions,
@@ -1904,6 +1953,9 @@ a {
     right: 0;
     top: calc(100% + 0.65rem);
     width: min(19rem, calc(100vw - 1rem));
+    max-height: min(80vh, 34rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 0.9rem;
     border: 1px solid var(--button-secondary-border);
     border-radius: 24px;
@@ -1976,6 +2028,16 @@ a {
     margin-bottom: 0.2rem;
   }
 
+  .mobile-nav__panel .appearance-panel__surface {
+    gap: 0.8rem;
+  }
+
+  .mobile-nav__panel .palette-grid {
+    max-height: min(44vh, 16rem);
+    overflow-y: auto;
+    padding-right: 0.2rem;
+  }
+
   .mobile-nav__panel .palette-option {
     padding-block: 0.7rem;
   }
@@ -2026,6 +2088,7 @@ a {
   .thread-card__meta,
   .resource-card__header,
   .event-card,
+  .event-card__content-link,
   .resource-meta,
   .stack-row,
   .voice-card__footer {

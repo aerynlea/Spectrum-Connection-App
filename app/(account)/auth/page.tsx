@@ -21,7 +21,7 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
   const currentUser = await getCurrentUser();
 
   if (currentUser) {
-    redirect("/dashboard");
+    redirect("/");
   }
 
   const message = await getQueryMessage(searchParams, "message");

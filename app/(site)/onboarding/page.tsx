@@ -7,7 +7,6 @@ import { SectionHeading } from "@/components/section-heading";
 import { StatusBanner } from "@/components/status-banner";
 import { requireCurrentUser } from "@/lib/auth";
 import { formatGoal } from "@/lib/formatters";
-import { membershipHighlights } from "@/lib/membership";
 import { getQueryMessage, type PageSearchParams } from "@/lib/search-params";
 
 type OnboardingPageProps = {
@@ -79,13 +78,21 @@ export default async function OnboardingPage({
             </article>
           </div>
           <div className="card-grid card-grid--three">
-            {membershipHighlights.map((highlight) => (
-              <article className="feature-card feature-card--flat" key={highlight.title}>
-                <p className="feature-label">{highlight.eyebrow}</p>
-                <h3>{highlight.title}</h3>
-                <p>{highlight.detail}</p>
-              </article>
-            ))}
+            <article className="feature-card feature-card--flat">
+              <p className="feature-label">Saved support</p>
+              <h3>Keep your most useful links close.</h3>
+              <p>Save what helps so you do not have to start over each time you come back.</p>
+            </article>
+            <article className="feature-card feature-card--flat">
+              <p className="feature-label">Community</p>
+              <h3>Come back to honest, lived support.</h3>
+              <p>Read message-board conversations and learn from families, self-advocates, and trusted professionals.</p>
+            </article>
+            <article className="feature-card feature-card--flat">
+              <p className="feature-label">Events</p>
+              <h3>Keep real-world connection in view.</h3>
+              <p>Find workshops, inclusive outings, and community events that feel relevant to your stage of life.</p>
+            </article>
           </div>
         </div>
 

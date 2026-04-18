@@ -10,7 +10,7 @@ export default function SignInPage() {
   }
 
   const signInProps = {
-    fallbackRedirectUrl: "/dashboard",
+    fallbackRedirectUrl: "/",
     path: "/sign-in",
     resetPasswordUrl: "/sign-in/reset-password",
     routing: "path",

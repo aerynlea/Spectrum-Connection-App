@@ -344,7 +344,7 @@ export async function signInAction(formData: FormData) {
 
   await establishSession(authRecord.id);
   revalidateAppShell();
-  redirect(buildPath("/dashboard", { message: "You are signed in." }));
+  redirect(buildPath("/", { message: "You are signed in." }));
 }
 
 export async function requestPasswordResetAction(formData: FormData) {

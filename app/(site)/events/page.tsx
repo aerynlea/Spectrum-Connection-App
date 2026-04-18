@@ -52,23 +52,28 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
 
                 return (
                   <article className="event-card" key={event.id}>
-                    <div className="event-date">
-                      <span>{month}</span>
-                      <strong>{day}</strong>
-                    </div>
-                    <div className="event-card__body">
-                      <p className="feature-label">
-                        Recommended • {event.format}
-                      </p>
-                      <h3>{event.title}</h3>
-                      <p>{event.detail}</p>
-                      <p className="event-meta">
-                        {formatDateTime(event.eventDate)} • {event.location}
-                      </p>
-                      <Link className="text-link" href={event.href} rel="noreferrer" target="_blank">
-                        View event details
-                      </Link>
-                    </div>
+                    <Link
+                      className="event-card__content-link"
+                      href={event.href}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      <div className="event-date">
+                        <span>{month}</span>
+                        <strong>{day}</strong>
+                      </div>
+                      <div className="event-card__body">
+                        <p className="feature-label">
+                          Recommended • {event.format}
+                        </p>
+                        <h3>{event.title}</h3>
+                        <p>{event.detail}</p>
+                        <p className="event-meta">
+                          {formatDateTime(event.eventDate)} • {event.location}
+                        </p>
+                        <span className="event-card__cta">Open official event page</span>
+                      </div>
+                    </Link>
                   </article>
                 );
               })}
@@ -105,29 +110,29 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
 
               return (
                 <article className="event-card event-card--full" key={event.id}>
-                  <div className="event-date">
-                    <span>{month}</span>
-                    <strong>{day}</strong>
-                  </div>
-                  <div className="event-card__body">
-                    <p className="feature-label">
-                      Near {currentUser.location} • {event.format}
-                    </p>
-                    <h3>{event.title}</h3>
-                    <p>{event.detail}</p>
-                    <p className="event-meta">
-                      {formatDateTime(event.eventDate)} • {event.location} • Hosted by{" "}
-                      {event.hostName}
-                    </p>
-                    <Link
-                      className="text-link"
-                      href={event.href}
-                      rel="noreferrer"
-                      target="_blank"
-                    >
-                      Open official event page
-                    </Link>
-                  </div>
+                  <Link
+                    className="event-card__content-link"
+                    href={event.href}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    <div className="event-date">
+                      <span>{month}</span>
+                      <strong>{day}</strong>
+                    </div>
+                    <div className="event-card__body">
+                      <p className="feature-label">
+                        Near {currentUser.location} • {event.format}
+                      </p>
+                      <h3>{event.title}</h3>
+                      <p>{event.detail}</p>
+                      <p className="event-meta">
+                        {formatDateTime(event.eventDate)} • {event.location} • Hosted by{" "}
+                        {event.hostName}
+                      </p>
+                      <span className="event-card__cta">Open official event page</span>
+                    </div>
+                  </Link>
                 </article>
               );
             })}
@@ -147,24 +152,29 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
 
             return (
               <article className="event-card event-card--full" key={event.id}>
-                <div className="event-date">
-                  <span>{month}</span>
-                  <strong>{day}</strong>
-                </div>
-                <div className="event-card__body">
-                  <p className="feature-label">
-                    {event.format} • {event.audience}
-                  </p>
-                  <h3>{event.title}</h3>
-                  <p>{event.detail}</p>
-                  <p className="event-meta">
-                    {formatDateTime(event.eventDate)} • {event.location} • Hosted by{" "}
-                    {event.hostName}
-                  </p>
-                  <Link className="text-link" href={event.href} rel="noreferrer" target="_blank">
-                    Open official event page
-                  </Link>
-                </div>
+                <Link
+                  className="event-card__content-link"
+                  href={event.href}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  <div className="event-date">
+                    <span>{month}</span>
+                    <strong>{day}</strong>
+                  </div>
+                  <div className="event-card__body">
+                    <p className="feature-label">
+                      {event.format} • {event.audience}
+                    </p>
+                    <h3>{event.title}</h3>
+                    <p>{event.detail}</p>
+                    <p className="event-meta">
+                      {formatDateTime(event.eventDate)} • {event.location} • Hosted by{" "}
+                      {event.hostName}
+                    </p>
+                    <span className="event-card__cta">Open official event page</span>
+                  </div>
+                </Link>
               </article>
             );
           })}

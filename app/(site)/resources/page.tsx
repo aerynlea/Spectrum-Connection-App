@@ -7,8 +7,10 @@ import { StatusBanner } from "@/components/status-banner";
 import { getCurrentUser } from "@/lib/auth";
 import { listResources } from "@/lib/data";
 import {
+  buildResourceCollectionPath,
   getFilteredResources,
   getResourceDirectoryOptions,
+  getResourceQuickStartByCollectionName,
   getResourceQuickStartSummaries,
 } from "@/lib/resources";
 import { getQueryMessage } from "@/lib/search-params";
@@ -72,6 +74,9 @@ export default async function ResourcesPage({
   const quickStarts = getResourceQuickStartSummaries(resources);
   const options = getResourceDirectoryOptions(resources);
   const returnTo = buildReturnTo(filters);
+  const selectedQuickStart = filters.collection
+    ? getResourceQuickStartByCollectionName(filters.collection)
+    : null;
 
   return (
     <div className="page">
@@ -125,10 +130,7 @@ export default async function ResourcesPage({
           {quickStarts.map((quickStart) => (
             <Link
               className="feature-card"
-              href={{
-                pathname: "/resources",
-                query: { collection: quickStart.collectionName },
-              }}
+              href={buildResourceCollectionPath(quickStart.slug)}
               key={quickStart.slug}
             >
               <p className="feature-label">
@@ -202,6 +204,14 @@ export default async function ResourcesPage({
               <button className="button-primary" type="submit">
                 Show matches
               </button>
+              {selectedQuickStart ? (
+                <Link
+                  className="button-secondary"
+                  href={buildResourceCollectionPath(selectedQuickStart.slug)}
+                >
+                  Open support page
+                </Link>
+              ) : null}
               <Link className="button-secondary" href="/resources">
                 Clear filters
               </Link>

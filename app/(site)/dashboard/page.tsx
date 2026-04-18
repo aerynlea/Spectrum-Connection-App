@@ -2,7 +2,6 @@ import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { MembershipActions } from "@/components/membership-actions";
 import { ProfileForm } from "@/components/profile-form";
 import { SaveResourceForm } from "@/components/save-resource-form";
 import { SectionHeading } from "@/components/section-heading";
@@ -22,16 +21,10 @@ import {
   formatRole,
 } from "@/lib/formatters";
 import { partitionByLocation } from "@/lib/location";
-import {
-  buildPremiumRoadmap,
-  getMembershipDescription,
-  getSubscriptionStatusLabel,
-  hasPremiumAccess,
-} from "@/lib/membership";
+import { buildPremiumRoadmap } from "@/lib/membership";
 import { buildRecommendations } from "@/lib/recommendations";
 import { getQueryMessage, type PageSearchParams } from "@/lib/search-params";
 import { profileQuotes } from "@/lib/site-data";
-import { isStripeConfigured } from "@/lib/platform";
 
 type DashboardPageProps = {
   searchParams?: PageSearchParams;
@@ -55,8 +48,7 @@ export default async function DashboardPage({
   const recentPosts = await listCommunityPosts(3);
   const recommendations = buildRecommendations(currentUser, resources, events);
   const eventSections = partitionByLocation(recommendations.events, currentUser.location);
-  const premiumRoadmap = buildPremiumRoadmap(currentUser);
-  const premiumAccess = hasPremiumAccess(currentUser);
+  const goalRoadmap = buildPremiumRoadmap(currentUser);
 
   return (
     <div className="page">
@@ -97,44 +89,44 @@ export default async function DashboardPage({
       <section className="section split-layout">
         <div className="section-panel section-panel--accent">
           <SectionHeading
-            eyebrow="Membership"
-            intro={getMembershipDescription(currentUser)}
-            title={
-              premiumAccess
-                ? "Your premium planning tools are ready."
-                : "Premium can make planning feel steadier."
-            }
+            eyebrow="Free access"
+            intro="Guiding Light is staying focused on access, guidance, and connection without locking support behind a paid layer."
+            title="Your guide stays open and free."
           />
-          <article className="membership-card">
-            <div className="pill-list pill-list--compact">
-              <span className="pill pill--soft">
-                {currentUser.membershipTier === "premium" ? "Premium member" : "Free member"}
-              </span>
-              <span className="pill pill--soft">
-                {getSubscriptionStatusLabel(currentUser.subscriptionStatus)}
-              </span>
-            </div>
-            <p>
-              {premiumAccess
-                ? "Your roadmap below is tailored around the goals you chose, so your next steps stay easier to return to."
-                : "Upgrade whenever you want a more guided planning layer built around your goals, life stage, and saved support."}
-            </p>
-            <MembershipActions
-              canManage={premiumAccess && Boolean(currentUser.stripeCustomerId)}
-              checkoutDisabled={!isStripeConfigured}
-            />
-          </article>
+          <div className="support-steps">
+            <article className="support-step">
+              <span>01</span>
+              <div>
+                <h3>Resources stay open</h3>
+                <p>Families can keep opening real links, event pages, and practical tools without a paywall.</p>
+              </div>
+            </article>
+            <article className="support-step">
+              <span>02</span>
+              <div>
+                <h3>Community stays reachable</h3>
+                <p>Message-board support, shared experiences, and encouragement remain part of the main experience.</p>
+              </div>
+            </article>
+            <article className="support-step">
+              <span>03</span>
+              <div>
+                <h3>Your saved space still matters</h3>
+                <p>Profiles, saved links, and your next-step view keep helping you return to what matters most.</p>
+              </div>
+            </article>
+          </div>
         </div>
 
         <div className="section-panel">
           <SectionHeading
-            eyebrow="Premium roadmap"
-            intro="A sample of the guided next-step planning premium membership can keep close at hand."
-            title="What premium can help you hold together."
+            eyebrow="Your next steps"
+            intro="These are still shaped around the goals you chose, without asking you to upgrade to keep the basics close."
+            title="A simple roadmap to keep nearby."
           />
           <div className="stack-list">
-            {premiumRoadmap.map((item) => (
-                <article className="sub-card" key={item.goal}>
+            {goalRoadmap.map((item) => (
+              <article className="sub-card" key={item.goal}>
                 <p className="feature-label">{formatGoal(item.goal)}</p>
                 <h3>{item.title}</h3>
                 <p>{item.detail}</p>
@@ -275,26 +267,28 @@ export default async function DashboardPage({
 
                   return (
                     <article className="event-card" key={event.id}>
-                      <div className="event-date">
-                        <span>{month}</span>
-                        <strong>{day}</strong>
-                      </div>
-                      <div className="event-card__body">
-                        <p className="feature-label">Near {currentUser.location} • {event.format}</p>
-                        <h3>{event.title}</h3>
-                        <p>{event.detail}</p>
-                        <p className="event-meta">
-                          {formatDateTime(event.eventDate)} • {event.location}
-                        </p>
-                        <Link
-                          className="text-link"
-                          href={event.href}
-                          rel="noreferrer"
-                          target="_blank"
-                        >
-                          View event details
-                        </Link>
-                      </div>
+                      <Link
+                        className="event-card__content-link"
+                        href={event.href}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        <div className="event-date">
+                          <span>{month}</span>
+                          <strong>{day}</strong>
+                        </div>
+                        <div className="event-card__body">
+                          <p className="feature-label">
+                            Near {currentUser.location} • {event.format}
+                          </p>
+                          <h3>{event.title}</h3>
+                          <p>{event.detail}</p>
+                          <p className="event-meta">
+                            {formatDateTime(event.eventDate)} • {event.location}
+                          </p>
+                          <span className="event-card__cta">Open official event page</span>
+                        </div>
+                      </Link>
                     </article>
                   );
                 })
@@ -303,28 +297,28 @@ export default async function DashboardPage({
 
               return (
                 <article className="event-card" key={event.id}>
-                  <div className="event-date">
-                    <span>{month}</span>
-                    <strong>{day}</strong>
-                  </div>
-                  <div className="event-card__body">
-                    <p className="feature-label">
-                      {event.format} • {event.audience}
-                    </p>
-                    <h3>{event.title}</h3>
-                    <p>{event.detail}</p>
-                    <p className="event-meta">
-                      {formatDateTime(event.eventDate)} • {event.location}
-                    </p>
-                    <Link
-                      className="text-link"
-                      href={event.href}
-                      rel="noreferrer"
-                      target="_blank"
-                    >
-                      View event details
-                    </Link>
-                  </div>
+                  <Link
+                    className="event-card__content-link"
+                    href={event.href}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    <div className="event-date">
+                      <span>{month}</span>
+                      <strong>{day}</strong>
+                    </div>
+                    <div className="event-card__body">
+                      <p className="feature-label">
+                        {event.format} • {event.audience}
+                      </p>
+                      <h3>{event.title}</h3>
+                      <p>{event.detail}</p>
+                      <p className="event-meta">
+                        {formatDateTime(event.eventDate)} • {event.location}
+                      </p>
+                      <span className="event-card__cta">Open official event page</span>
+                    </div>
+                  </Link>
                 </article>
               );
             })}

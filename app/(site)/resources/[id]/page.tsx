@@ -8,7 +8,11 @@ import { SectionHeading } from "@/components/section-heading";
 import { getCurrentUser } from "@/lib/auth";
 import { listCommunityPosts, listResources } from "@/lib/data";
 import { formatAgeGroup, formatGoal } from "@/lib/formatters";
-import { getResourceById } from "@/lib/resources";
+import {
+  buildResourceCollectionPath,
+  getResourceById,
+  getResourceQuickStartByCollectionName,
+} from "@/lib/resources";
 
 type ResourceDetailPageProps = {
   params: Promise<{
@@ -124,6 +128,7 @@ export default async function ResourceDetailPage({
     .sort((a, b) => b.score - a.score)
     .slice(0, 4)
     .map((item) => item.post);
+  const matchingQuickStart = getResourceQuickStartByCollectionName(resource.collectionName);
 
   return (
     <div className="page">
@@ -190,10 +195,11 @@ export default async function ResourceDetailPage({
               </Link>
               <Link
                 className="button-secondary"
-                href={{
-                  pathname: "/resources",
-                  query: { collection: resource.collectionName },
-                }}
+                href={
+                  matchingQuickStart
+                    ? buildResourceCollectionPath(matchingQuickStart.slug)
+                    : `/resources?collection=${encodeURIComponent(resource.collectionName)}`
+                }
               >
                 More support like this
               </Link>
