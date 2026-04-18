@@ -4,6 +4,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import {
   lockAdminLookupAction,
   reviewModerationReportAction,
+  saveModerationMemberNoteAction,
   updateProfessionalVerificationAction,
   unlockAdminLookupAction,
 } from "@/app/actions";
@@ -15,6 +16,8 @@ import {
 } from "@/lib/admin-access";
 import type {
   ModerationActionTaken,
+  ModerationEscalationRecord,
+  ModerationMemberNoteRecord,
   ModerationReportRecord,
   ModerationReportStatus,
   TrustHistoryRecord,
@@ -23,6 +26,8 @@ import {
   getCommunityPostById,
   getCommunityReplyById,
   getProfessionalById,
+  listModerationEscalations,
+  listModerationMemberNotes,
   listModerationReports,
   listProfessionals,
 } from "@/lib/data";
@@ -37,6 +42,12 @@ type ModerationTargetState = {
   exists: boolean;
   hidden: boolean;
 };
+
+function buildModerationSubjectKey(targetUserId: string | null, targetAuthor: string) {
+  const authorKey = targetAuthor.trim().toLowerCase().replace(/\s+/g, " ");
+
+  return targetUserId?.trim() || `author:${authorKey}`;
+}
 
 function formatStatus(status: ModerationReportStatus) {
   switch (status) {
@@ -94,6 +105,23 @@ function formatVerificationStatus(status: string) {
   }
 }
 
+function groupEscalationsBySubject(escalations: ModerationEscalationRecord[]) {
+  const entries = new Map<string, ModerationEscalationRecord[]>();
+
+  for (const escalation of escalations) {
+    const existing = entries.get(escalation.subjectKey);
+
+    if (existing) {
+      existing.push(escalation);
+      continue;
+    }
+
+    entries.set(escalation.subjectKey, [escalation]);
+  }
+
+  return entries;
+}
+
 function buildTrustHistory(reports: ModerationReportRecord[]): TrustHistoryRecord[] {
   const summaries = new Map<string, TrustHistoryRecord>();
 
@@ -102,8 +130,7 @@ function buildTrustHistory(reports: ModerationReportRecord[]): TrustHistoryRecor
       continue;
     }
 
-    const key =
-      report.targetUserId?.trim() || `author:${report.targetAuthor.trim().toLowerCase()}`;
+    const key = buildModerationSubjectKey(report.targetUserId, report.targetAuthor);
     const existing = summaries.get(key);
 
     if (existing) {
@@ -163,6 +190,41 @@ function describeTrustHistory(history: TrustHistoryRecord) {
   return "Reviewed history";
 }
 
+function describeEscalationEvent(event: ModerationEscalationRecord) {
+  switch (event.eventType) {
+    case "report-filed":
+      return "Community report filed";
+    case "reviewed":
+      return "Report reviewed";
+    case "hidden":
+      return "Content hidden";
+    case "restored":
+      return "Content restored";
+    case "dismissed":
+      return "Report dismissed";
+    case "member-note-updated":
+      return event.note ? "Member note updated" : "Member note cleared";
+    default:
+      return event.eventType;
+  }
+}
+
+function describeEscalationContext(event: ModerationEscalationRecord) {
+  if (event.eventType === "member-note-updated") {
+    return event.note || "No persistent member note is on file right now.";
+  }
+
+  if (event.note) {
+    return event.note;
+  }
+
+  if (event.reason) {
+    return `Reason: ${event.reason}`;
+  }
+
+  return "No additional context was added.";
+}
+
 async function getTargetState(report: ModerationReportRecord): Promise<ModerationTargetState> {
   if (report.targetType === "community-post") {
     const target = await getCommunityPostById(report.targetId, true);
@@ -189,7 +251,13 @@ export default async function ModerationPage({
   const hasAccess = isConfigured ? await hasAdminLookupAccess() : false;
   const reports = hasAccess ? await listModerationReports() : [];
   const trustHistory = hasAccess ? buildTrustHistory(reports) : [];
+  const memberNotes = hasAccess ? await listModerationMemberNotes() : [];
+  const escalations = hasAccess ? await listModerationEscalations() : [];
   const professionals = hasAccess ? await listProfessionals(true) : [];
+  const memberNoteMap = new Map<string, ModerationMemberNoteRecord>(
+    memberNotes.map((note) => [note.subjectKey, note]),
+  );
+  const escalationMap = groupEscalationsBySubject(escalations);
   const reportsWithState = hasAccess
     ? await Promise.all(
         reports.map(async (report) => ({
@@ -373,94 +441,138 @@ export default async function ModerationPage({
             {reportsWithState.length > 0 ? (
               <div className="stack-list">
                 {reportsWithState.map(({ report, targetState }) => (
-                  <article className="thread-card" key={report.id}>
-                    <div className="thread-card__meta">
-                      <div>
-                        <h3>{report.targetLabel}</h3>
-                        <p>
-                          {formatTargetType(report.targetType)} • {report.targetAuthor}
+                  (() => {
+                    const subjectKey =
+                      report.targetType === "professional"
+                        ? null
+                        : buildModerationSubjectKey(
+                            report.targetUserId,
+                            report.targetAuthor,
+                          );
+                    const memberNote = subjectKey
+                      ? memberNoteMap.get(subjectKey)
+                      : undefined;
+                    const escalationCount = subjectKey
+                      ? escalationMap.get(subjectKey)?.length ?? 0
+                      : 0;
+
+                    return (
+                      <article className="thread-card" key={report.id}>
+                        <div className="thread-card__meta">
+                          <div>
+                            <h3>{report.targetLabel}</h3>
+                            <p>
+                              {formatTargetType(report.targetType)} • {report.targetAuthor}
+                            </p>
+                          </div>
+                          <span className={`status-chip status-chip--${report.status}`}>
+                            {formatStatus(report.status)}
+                          </span>
+                        </div>
+                        <p className="feature-label">
+                          Reported by {report.reporterName} • {formatDateTime(report.createdAt)}
                         </p>
-                      </div>
-                      <span className={`status-chip status-chip--${report.status}`}>
-                        {formatStatus(report.status)}
-                      </span>
-                    </div>
-                    <p className="feature-label">
-                      Reported by {report.reporterName} • {formatDateTime(report.createdAt)}
-                    </p>
-                    <p><strong>Reason:</strong> {report.reason}</p>
-                    {report.details ? <p><strong>Context:</strong> {report.details}</p> : null}
-                    {report.moderatorNote ? (
-                      <p><strong>Moderator note:</strong> {report.moderatorNote}</p>
-                    ) : null}
-                    <p className="meta-copy">{report.targetExcerpt}</p>
-                    <div className="pill-list pill-list--compact">
-                      <span className="pill">
-                        {targetState.exists
-                          ? targetState.hidden
-                            ? "Currently hidden"
-                            : "Currently visible"
-                          : "Original item missing"}
-                      </span>
-                      <span className="pill">{formatAction(report.actionTaken)}</span>
-                      {report.reviewedAt ? (
-                        <span className="pill">
-                          Reviewed {formatDateTime(report.reviewedAt)}
-                        </span>
-                      ) : null}
-                    </div>
-                    <form action={reviewModerationReportAction} className="form-card">
-                      <input name="reportId" type="hidden" value={report.id} />
-                      <input name="targetId" type="hidden" value={report.targetId} />
-                      <input name="targetType" type="hidden" value={report.targetType} />
-                      <label className="field">
-                        <span>Moderator note</span>
-                        <textarea
-                          defaultValue={report.moderatorNote}
-                          name="moderatorNote"
-                          placeholder="Add the context behind this decision."
-                          rows={3}
-                        />
-                      </label>
-                      <div className="button-row">
-                        <button
-                          className="button-secondary"
-                          name="intent"
-                          type="submit"
-                          value="review"
-                        >
-                          Mark reviewed
-                        </button>
-                        {targetState.hidden ? (
-                          <button
-                            className="button-secondary"
-                            name="intent"
-                            type="submit"
-                            value="restore"
-                          >
-                            Restore content
-                          </button>
-                        ) : (
-                          <button
-                            className="button-primary"
-                            name="intent"
-                            type="submit"
-                            value="hide"
-                          >
-                            Hide from public view
-                          </button>
-                        )}
-                        <button
-                          className="button-secondary"
-                          name="intent"
-                          type="submit"
-                          value="dismiss"
-                        >
-                          Dismiss report
-                        </button>
-                      </div>
-                    </form>
-                  </article>
+                        <p><strong>Reason:</strong> {report.reason}</p>
+                        {report.details ? <p><strong>Context:</strong> {report.details}</p> : null}
+                        {report.moderatorNote ? (
+                          <p><strong>Moderator note:</strong> {report.moderatorNote}</p>
+                        ) : null}
+                        {memberNote ? (
+                          <p>
+                            <strong>Member note on file:</strong> {memberNote.note}
+                          </p>
+                        ) : null}
+                        <p className="meta-copy">{report.targetExcerpt}</p>
+                        <div className="pill-list pill-list--compact">
+                          <span className="pill">
+                            {targetState.exists
+                              ? targetState.hidden
+                                ? "Currently hidden"
+                                : "Currently visible"
+                              : "Original item missing"}
+                          </span>
+                          <span className="pill">{formatAction(report.actionTaken)}</span>
+                          {escalationCount > 0 ? (
+                            <span className="pill">
+                              {escalationCount} escalation
+                              {escalationCount === 1 ? "" : "s"}
+                            </span>
+                          ) : null}
+                          {report.reviewedAt ? (
+                            <span className="pill">
+                              Reviewed {formatDateTime(report.reviewedAt)}
+                            </span>
+                          ) : null}
+                        </div>
+                        <form action={reviewModerationReportAction} className="form-card">
+                          <input name="reportId" type="hidden" value={report.id} />
+                          <input name="targetId" type="hidden" value={report.targetId} />
+                          <input name="targetType" type="hidden" value={report.targetType} />
+                          <input
+                            name="targetUserId"
+                            type="hidden"
+                            value={report.targetUserId ?? ""}
+                          />
+                          <input
+                            name="targetAuthor"
+                            type="hidden"
+                            value={report.targetAuthor}
+                          />
+                          <input
+                            name="reportReason"
+                            type="hidden"
+                            value={report.reason}
+                          />
+                          <label className="field">
+                            <span>Moderator note</span>
+                            <textarea
+                              defaultValue={report.moderatorNote}
+                              name="moderatorNote"
+                              placeholder="Add the context behind this decision."
+                              rows={3}
+                            />
+                          </label>
+                          <div className="button-row">
+                            <button
+                              className="button-secondary"
+                              name="intent"
+                              type="submit"
+                              value="review"
+                            >
+                              Mark reviewed
+                            </button>
+                            {targetState.hidden ? (
+                              <button
+                                className="button-secondary"
+                                name="intent"
+                                type="submit"
+                                value="restore"
+                              >
+                                Restore content
+                              </button>
+                            ) : (
+                              <button
+                                className="button-primary"
+                                name="intent"
+                                type="submit"
+                                value="hide"
+                              >
+                                Hide from public view
+                              </button>
+                            )}
+                            <button
+                              className="button-secondary"
+                              name="intent"
+                              type="submit"
+                              value="dismiss"
+                            >
+                              Dismiss report
+                            </button>
+                          </div>
+                        </form>
+                      </article>
+                    );
+                  })()
                 ))}
               </div>
             ) : (
@@ -480,37 +592,106 @@ export default async function ModerationPage({
               {trustHistory.length > 0 ? (
                 <div className="stack-list">
                   {trustHistory.map((history) => (
-                    <article className="thread-card" key={history.key}>
-                      <div className="thread-card__meta">
-                        <div>
-                          <h3>{history.targetAuthor}</h3>
-                          <p>
-                            {history.targetUserId
-                              ? "Signed-in member"
-                              : "Name-only history from a seeded or legacy post"}
+                    (() => {
+                      const noteRecord = memberNoteMap.get(history.key);
+                      const historyEscalations =
+                        escalationMap.get(history.key)?.slice(0, 4) ?? [];
+
+                      return (
+                        <article className="thread-card" key={history.key}>
+                          <div className="thread-card__meta">
+                            <div>
+                              <h3>{history.targetAuthor}</h3>
+                              <p>
+                                {history.targetUserId
+                                  ? "Signed-in member"
+                                  : "Name-only history from a seeded or legacy post"}
+                              </p>
+                            </div>
+                            <span
+                              className={`status-chip status-chip--${
+                                history.openReports > 0 ? "open" : "reviewed"
+                              }`}
+                            >
+                              {describeTrustHistory(history)}
+                            </span>
+                          </div>
+                          <div className="pill-list pill-list--compact">
+                            <span className="pill">{history.totalReports} total reports</span>
+                            <span className="pill">{history.openReports} open</span>
+                            <span className="pill">{history.resolvedReports} resolved</span>
+                            <span className="pill">{history.hiddenActions} hidden actions</span>
+                            <span className="pill">
+                              {historyEscalations.length} recent event
+                              {historyEscalations.length === 1 ? "" : "s"}
+                            </span>
+                          </div>
+                          <p className="meta-copy">
+                            Last reported {formatDateTime(history.lastReportedAt)}
+                            {history.lastReviewedAt
+                              ? ` • Last reviewed ${formatDateTime(history.lastReviewedAt)}`
+                              : ""}
                           </p>
-                        </div>
-                        <span
-                          className={`status-chip status-chip--${
-                            history.openReports > 0 ? "open" : "reviewed"
-                          }`}
-                        >
-                          {describeTrustHistory(history)}
-                        </span>
-                      </div>
-                      <div className="pill-list pill-list--compact">
-                        <span className="pill">{history.totalReports} total reports</span>
-                        <span className="pill">{history.openReports} open</span>
-                        <span className="pill">{history.resolvedReports} resolved</span>
-                        <span className="pill">{history.hiddenActions} hidden actions</span>
-                      </div>
-                      <p className="meta-copy">
-                        Last reported {formatDateTime(history.lastReportedAt)}
-                        {history.lastReviewedAt
-                          ? ` • Last reviewed ${formatDateTime(history.lastReviewedAt)}`
-                          : ""}
-                      </p>
-                    </article>
+                          <form action={saveModerationMemberNoteAction} className="form-card">
+                            <input name="subjectKey" type="hidden" value={history.key} />
+                            <input
+                              name="targetUserId"
+                              type="hidden"
+                              value={history.targetUserId ?? ""}
+                            />
+                            <input
+                              name="targetAuthor"
+                              type="hidden"
+                              value={history.targetAuthor}
+                            />
+                            <label className="field">
+                              <span>Member-level moderation note</span>
+                              <textarea
+                                defaultValue={noteRecord?.note ?? ""}
+                                name="note"
+                                placeholder="Save a persistent note about repeat concerns, context, or what should be watched next."
+                                rows={3}
+                              />
+                            </label>
+                            <div className="button-row">
+                              <button className="button-secondary" type="submit">
+                                Save member note
+                              </button>
+                            </div>
+                          </form>
+                          {noteRecord ? (
+                            <p className="meta-copy">
+                              Member note updated {formatDateTime(noteRecord.updatedAt)}
+                            </p>
+                          ) : (
+                            <p className="meta-copy">
+                              No persistent member note has been saved yet.
+                            </p>
+                          )}
+                          {historyEscalations.length > 0 ? (
+                            <div className="stack-list">
+                              {historyEscalations.map((event) => (
+                                <article
+                                  className="feature-card feature-card--flat"
+                                  key={event.id}
+                                >
+                                  <div className="thread-card__meta">
+                                    <div>
+                                      <h3>{describeEscalationEvent(event)}</h3>
+                                      <p>{formatDateTime(event.createdAt)}</p>
+                                    </div>
+                                    {event.reason ? (
+                                      <span className="pill">{event.reason}</span>
+                                    ) : null}
+                                  </div>
+                                  <p>{describeEscalationContext(event)}</p>
+                                </article>
+                              ))}
+                            </div>
+                          ) : null}
+                        </article>
+                      );
+                    })()
                   ))}
                 </div>
               ) : (

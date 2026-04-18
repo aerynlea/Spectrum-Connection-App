@@ -239,6 +239,34 @@ export async function listModerationReports() {
     : (await getLocal()).listModerationReports();
 }
 
+export async function listModerationMemberNotes() {
+  return isNeonConfigured
+    ? (await getHosted()).listModerationMemberNotes()
+    : (await getLocal()).listModerationMemberNotes();
+}
+
+export async function upsertModerationMemberNote(
+  input: Parameters<LocalModule["upsertModerationMemberNote"]>[0],
+) {
+  return isNeonConfigured
+    ? (await getHosted()).upsertModerationMemberNote(input)
+    : (await getLocal()).upsertModerationMemberNote(input);
+}
+
+export async function listModerationEscalations() {
+  return isNeonConfigured
+    ? (await getHosted()).listModerationEscalations()
+    : (await getLocal()).listModerationEscalations();
+}
+
+export async function createModerationEscalation(
+  input: Parameters<LocalModule["createModerationEscalation"]>[0],
+) {
+  return isNeonConfigured
+    ? (await getHosted()).createModerationEscalation(input)
+    : (await getLocal()).createModerationEscalation(input);
+}
+
 export async function updateModerationReport(
   reportId: string,
   input: Parameters<LocalModule["updateModerationReport"]>[1],

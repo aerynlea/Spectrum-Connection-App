@@ -17,6 +17,9 @@ import type {
   EventRecord,
   MembershipTier,
   ModerationActionTaken,
+  ModerationEscalationEventType,
+  ModerationEscalationRecord,
+  ModerationMemberNoteRecord,
   ModerationReportRecord,
   ModerationReportStatus,
   ModerationTargetType,
@@ -140,6 +143,26 @@ type ModerationReportRow = {
   reviewed_at: string | null;
 };
 
+type ModerationMemberNoteRow = {
+  subject_key: string;
+  target_user_id: string | null;
+  target_author: string;
+  note: string;
+  updated_at: string;
+};
+
+type ModerationEscalationRow = {
+  id: string;
+  subject_key: string;
+  target_user_id: string | null;
+  target_author: string;
+  report_id: string | null;
+  event_type: ModerationEscalationEventType;
+  reason: string;
+  note: string;
+  created_at: string;
+};
+
 type SessionRow = {
   id: string;
   user_id: string;
@@ -200,7 +223,7 @@ const dataDirectory = process.env.VERCEL
   ? join("/tmp", "guiding-light-data")
   : join(process.cwd(), "data");
 const databasePath = join(dataDirectory, "guiding-light.db");
-const schemaVersion = "2026-04-onboarding-membership";
+const schemaVersion = "2026-04-moderation-trust-history";
 
 const globalForDatabase = globalThis as typeof globalThis & {
   guidingLightDb?: DatabaseSync;
@@ -367,6 +390,26 @@ function getDatabase() {
       created_at TEXT NOT NULL,
       reviewed_at TEXT,
       FOREIGN KEY (reporter_user_id) REFERENCES users(id) ON DELETE SET NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS moderation_member_notes (
+      subject_key TEXT PRIMARY KEY,
+      target_user_id TEXT,
+      target_author TEXT NOT NULL,
+      note TEXT NOT NULL DEFAULT '',
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS moderation_escalations (
+      id TEXT PRIMARY KEY,
+      subject_key TEXT NOT NULL,
+      target_user_id TEXT,
+      target_author TEXT NOT NULL,
+      report_id TEXT,
+      event_type TEXT NOT NULL,
+      reason TEXT NOT NULL DEFAULT '',
+      note TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL
     );
   `);
 
@@ -606,6 +649,45 @@ function ensureContentColumns(database: DatabaseSync) {
     CREATE INDEX IF NOT EXISTS moderation_reports_target_user_idx
     ON moderation_reports (target_user_id, created_at DESC)
   `);
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS moderation_member_notes (
+      subject_key TEXT PRIMARY KEY,
+      target_user_id TEXT,
+      target_author TEXT NOT NULL,
+      note TEXT NOT NULL DEFAULT '',
+      updated_at TEXT NOT NULL
+    )
+  `);
+
+  database.exec(`
+    CREATE INDEX IF NOT EXISTS moderation_member_notes_target_user_idx
+    ON moderation_member_notes (target_user_id)
+  `);
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS moderation_escalations (
+      id TEXT PRIMARY KEY,
+      subject_key TEXT NOT NULL,
+      target_user_id TEXT,
+      target_author TEXT NOT NULL,
+      report_id TEXT,
+      event_type TEXT NOT NULL,
+      reason TEXT NOT NULL DEFAULT '',
+      note TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL
+    )
+  `);
+
+  database.exec(`
+    CREATE INDEX IF NOT EXISTS moderation_escalations_subject_idx
+    ON moderation_escalations (subject_key, created_at DESC)
+  `);
+
+  database.exec(`
+    CREATE INDEX IF NOT EXISTS moderation_escalations_target_user_idx
+    ON moderation_escalations (target_user_id, created_at DESC)
+  `);
 }
 
 function parseJson<T>(value: string | null | undefined, fallback: T): T {
@@ -742,6 +824,34 @@ function toModerationReport(row: ModerationReportRow): ModerationReportRecord {
     targetAuthor: row.target_author,
     createdAt: row.created_at,
     reviewedAt: row.reviewed_at,
+  };
+}
+
+function toModerationMemberNote(
+  row: ModerationMemberNoteRow,
+): ModerationMemberNoteRecord {
+  return {
+    subjectKey: row.subject_key,
+    targetUserId: row.target_user_id,
+    targetAuthor: row.target_author,
+    note: row.note,
+    updatedAt: row.updated_at,
+  };
+}
+
+function toModerationEscalation(
+  row: ModerationEscalationRow,
+): ModerationEscalationRecord {
+  return {
+    id: row.id,
+    subjectKey: row.subject_key,
+    targetUserId: row.target_user_id,
+    targetAuthor: row.target_author,
+    reportId: row.report_id,
+    eventType: row.event_type,
+    reason: row.reason,
+    note: row.note,
+    createdAt: row.created_at,
   };
 }
 
@@ -1652,6 +1762,127 @@ export function listModerationReports() {
     .all() as ModerationReportRow[];
 
   return rows.map(toModerationReport);
+}
+
+export function listModerationMemberNotes() {
+  const rows = database()
+    .prepare(`
+      SELECT
+        subject_key,
+        target_user_id,
+        target_author,
+        note,
+        updated_at
+      FROM moderation_member_notes
+      ORDER BY updated_at DESC
+    `)
+    .all() as ModerationMemberNoteRow[];
+
+  return rows.map(toModerationMemberNote);
+}
+
+export function upsertModerationMemberNote(input: {
+  subjectKey: string;
+  targetUserId: string | null;
+  targetAuthor: string;
+  note: string;
+}) {
+  const trimmedNote = input.note.trim();
+
+  if (!trimmedNote) {
+    database()
+      .prepare("DELETE FROM moderation_member_notes WHERE subject_key = ?")
+      .run(input.subjectKey);
+    return;
+  }
+
+  database()
+    .prepare(
+      `
+        INSERT INTO moderation_member_notes (
+          subject_key,
+          target_user_id,
+          target_author,
+          note,
+          updated_at
+        ) VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(subject_key) DO UPDATE SET
+          target_user_id = excluded.target_user_id,
+          target_author = excluded.target_author,
+          note = excluded.note,
+          updated_at = excluded.updated_at
+      `,
+    )
+    .run(
+      input.subjectKey,
+      input.targetUserId,
+      input.targetAuthor,
+      trimmedNote,
+      new Date().toISOString(),
+    );
+}
+
+export function listModerationEscalations() {
+  const rows = database()
+    .prepare(`
+      SELECT
+        id,
+        subject_key,
+        target_user_id,
+        target_author,
+        report_id,
+        event_type,
+        reason,
+        note,
+        created_at
+      FROM moderation_escalations
+      ORDER BY created_at DESC
+    `)
+    .all() as ModerationEscalationRow[];
+
+  return rows.map(toModerationEscalation);
+}
+
+export function createModerationEscalation(input: {
+  subjectKey: string;
+  targetUserId: string | null;
+  targetAuthor: string;
+  reportId: string | null;
+  eventType: ModerationEscalationEventType;
+  reason: string;
+  note: string;
+}) {
+  const escalationId = randomUUID();
+
+  database()
+    .prepare(
+      `
+        INSERT INTO moderation_escalations (
+          id,
+          subject_key,
+          target_user_id,
+          target_author,
+          report_id,
+          event_type,
+          reason,
+          note,
+          created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+    )
+    .run(
+      escalationId,
+      input.subjectKey,
+      input.targetUserId,
+      input.targetAuthor,
+      input.reportId,
+      input.eventType,
+      input.reason,
+      input.note,
+      new Date().toISOString(),
+    );
+
+  return escalationId;
 }
 
 export function updateModerationReport(

@@ -18,6 +18,9 @@ import type {
   GoalKey,
   MembershipTier,
   ModerationActionTaken,
+  ModerationEscalationEventType,
+  ModerationEscalationRecord,
+  ModerationMemberNoteRecord,
   ModerationReportRecord,
   ModerationReportStatus,
   ModerationTargetType,
@@ -139,6 +142,26 @@ type ModerationReportRow = {
   targetAuthor: string;
   createdAt: string;
   reviewedAt: string | null;
+};
+
+type ModerationMemberNoteRow = {
+  subjectKey: string;
+  targetUserId: string | null;
+  targetAuthor: string;
+  note: string;
+  updatedAt: string;
+};
+
+type ModerationEscalationRow = {
+  id: string;
+  subjectKey: string;
+  targetUserId: string | null;
+  targetAuthor: string;
+  reportId: string | null;
+  eventType: ModerationEscalationEventType;
+  reason: string;
+  note: string;
+  createdAt: string;
 };
 
 type StatsRow = {
@@ -319,6 +342,34 @@ function toModerationReport(row: ModerationReportRow): ModerationReportRecord {
     targetAuthor: row.targetAuthor,
     createdAt: row.createdAt,
     reviewedAt: row.reviewedAt,
+  };
+}
+
+function toModerationMemberNote(
+  row: ModerationMemberNoteRow,
+): ModerationMemberNoteRecord {
+  return {
+    subjectKey: row.subjectKey,
+    targetUserId: row.targetUserId,
+    targetAuthor: row.targetAuthor,
+    note: row.note,
+    updatedAt: row.updatedAt,
+  };
+}
+
+function toModerationEscalation(
+  row: ModerationEscalationRow,
+): ModerationEscalationRecord {
+  return {
+    id: row.id,
+    subjectKey: row.subjectKey,
+    targetUserId: row.targetUserId,
+    targetAuthor: row.targetAuthor,
+    reportId: row.reportId,
+    eventType: row.eventType,
+    reason: row.reason,
+    note: row.note,
+    createdAt: row.createdAt,
   };
 }
 
@@ -609,6 +660,45 @@ async function seedHostedDatabase() {
   await sql.query(`
     CREATE INDEX IF NOT EXISTS moderation_reports_target_user_idx
     ON moderation_reports (target_user_id, created_at DESC)
+  `);
+
+  await sql.query(`
+    CREATE TABLE IF NOT EXISTS moderation_member_notes (
+      subject_key TEXT PRIMARY KEY,
+      target_user_id TEXT,
+      target_author TEXT NOT NULL,
+      note TEXT NOT NULL DEFAULT '',
+      updated_at TEXT NOT NULL
+    )
+  `);
+
+  await sql.query(`
+    CREATE INDEX IF NOT EXISTS moderation_member_notes_target_user_idx
+    ON moderation_member_notes (target_user_id)
+  `);
+
+  await sql.query(`
+    CREATE TABLE IF NOT EXISTS moderation_escalations (
+      id TEXT PRIMARY KEY,
+      subject_key TEXT NOT NULL,
+      target_user_id TEXT,
+      target_author TEXT NOT NULL,
+      report_id TEXT,
+      event_type TEXT NOT NULL,
+      reason TEXT NOT NULL DEFAULT '',
+      note TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL
+    )
+  `);
+
+  await sql.query(`
+    CREATE INDEX IF NOT EXISTS moderation_escalations_subject_idx
+    ON moderation_escalations (subject_key, created_at DESC)
+  `);
+
+  await sql.query(`
+    CREATE INDEX IF NOT EXISTS moderation_escalations_target_user_idx
+    ON moderation_escalations (target_user_id, created_at DESC)
   `);
 
   for (const resource of resourceSeeds) {
@@ -1721,6 +1811,126 @@ export async function listModerationReports() {
   `) as ModerationReportRow[];
 
   return rows.map(toModerationReport);
+}
+
+export async function listModerationMemberNotes() {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  const rows = (await sql`
+    SELECT
+      subject_key AS "subjectKey",
+      target_user_id AS "targetUserId",
+      target_author AS "targetAuthor",
+      note,
+      updated_at AS "updatedAt"
+    FROM moderation_member_notes
+    ORDER BY updated_at DESC
+  `) as ModerationMemberNoteRow[];
+
+  return rows.map(toModerationMemberNote);
+}
+
+export async function upsertModerationMemberNote(input: {
+  subjectKey: string;
+  targetUserId: string | null;
+  targetAuthor: string;
+  note: string;
+}) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+  const trimmedNote = input.note.trim();
+
+  if (!trimmedNote) {
+    await sql`
+      DELETE FROM moderation_member_notes
+      WHERE subject_key = ${input.subjectKey}
+    `;
+    return;
+  }
+
+  await sql`
+    INSERT INTO moderation_member_notes (
+      subject_key,
+      target_user_id,
+      target_author,
+      note,
+      updated_at
+    ) VALUES (
+      ${input.subjectKey},
+      ${input.targetUserId},
+      ${input.targetAuthor},
+      ${trimmedNote},
+      ${new Date().toISOString()}
+    )
+    ON CONFLICT (subject_key) DO UPDATE SET
+      target_user_id = EXCLUDED.target_user_id,
+      target_author = EXCLUDED.target_author,
+      note = EXCLUDED.note,
+      updated_at = EXCLUDED.updated_at
+  `;
+}
+
+export async function listModerationEscalations() {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  const rows = (await sql`
+    SELECT
+      id,
+      subject_key AS "subjectKey",
+      target_user_id AS "targetUserId",
+      target_author AS "targetAuthor",
+      report_id AS "reportId",
+      event_type AS "eventType",
+      reason,
+      note,
+      created_at AS "createdAt"
+    FROM moderation_escalations
+    ORDER BY created_at DESC
+  `) as ModerationEscalationRow[];
+
+  return rows.map(toModerationEscalation);
+}
+
+export async function createModerationEscalation(input: {
+  subjectKey: string;
+  targetUserId: string | null;
+  targetAuthor: string;
+  reportId: string | null;
+  eventType: ModerationEscalationEventType;
+  reason: string;
+  note: string;
+}) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+  const escalationId = randomUUID();
+
+  await sql`
+    INSERT INTO moderation_escalations (
+      id,
+      subject_key,
+      target_user_id,
+      target_author,
+      report_id,
+      event_type,
+      reason,
+      note,
+      created_at
+    ) VALUES (
+      ${escalationId},
+      ${input.subjectKey},
+      ${input.targetUserId},
+      ${input.targetAuthor},
+      ${input.reportId},
+      ${input.eventType},
+      ${input.reason},
+      ${input.note},
+      ${new Date().toISOString()}
+    )
+  `;
+
+  return escalationId;
 }
 
 export async function updateModerationReport(

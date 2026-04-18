@@ -27,6 +27,7 @@ import {
   roleOptions,
 } from "@/lib/catalog";
 import {
+  createModerationEscalation,
   createPasswordResetToken,
   createModerationReport,
   createCommunityReply,
@@ -47,6 +48,7 @@ import {
   setCommunityReplyHidden,
   setProfessionalHidden,
   toggleSavedResource,
+  upsertModerationMemberNote,
   updateModerationReport,
   updateProfessionalVerification,
   updateUserPassword,
@@ -59,6 +61,7 @@ import {
 import { hasPremiumAccess } from "@/lib/membership";
 import type {
   AgeGroup,
+  ModerationEscalationEventType,
   GoalKey,
   ModerationTargetType,
   ProfessionalVerificationStatus,
@@ -140,6 +143,12 @@ function summarizeModerationText(value: string, maxLength = 180) {
   }
 
   return `${normalized.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+function buildModerationSubjectKey(targetUserId: string | null, targetAuthor: string) {
+  const authorKey = targetAuthor.trim().toLowerCase().replace(/\s+/g, " ");
+
+  return targetUserId?.trim() || `author:${authorKey}`;
 }
 
 async function getModerationTargetSnapshot(
@@ -787,7 +796,7 @@ export async function submitModerationReportAction(formData: FormData) {
     );
   }
 
-  await createModerationReport({
+  const reportId = await createModerationReport({
     targetType: targetType as ModerationTargetType,
     targetId,
     targetUserId: snapshot.targetUserId,
@@ -799,6 +808,21 @@ export async function submitModerationReportAction(formData: FormData) {
     targetExcerpt: snapshot.targetExcerpt,
     targetAuthor: snapshot.targetAuthor,
   });
+
+  if (targetType !== "professional") {
+    await createModerationEscalation({
+      subjectKey: buildModerationSubjectKey(
+        snapshot.targetUserId,
+        snapshot.targetAuthor,
+      ),
+      targetUserId: snapshot.targetUserId,
+      targetAuthor: snapshot.targetAuthor,
+      reportId,
+      eventType: "report-filed",
+      reason,
+      note: details,
+    });
+  }
 
   revalidatePath("/community");
   revalidatePath("/professionals");
@@ -835,6 +859,9 @@ export async function reviewModerationReportAction(formData: FormData) {
   const targetId = String(formData.get("targetId") ?? "");
   const intent = String(formData.get("intent") ?? "");
   const moderatorNote = String(formData.get("moderatorNote") ?? "").trim();
+  const targetUserId = String(formData.get("targetUserId") ?? "").trim() || null;
+  const targetAuthor = String(formData.get("targetAuthor") ?? "").trim();
+  const reportReason = String(formData.get("reportReason") ?? "").trim();
 
   if (!reportId || !targetId || !validModerationTargets.has(targetType as ModerationTargetType)) {
     redirect(
@@ -892,6 +919,28 @@ export async function reviewModerationReportAction(formData: FormData) {
     );
   }
 
+  if (targetType !== "professional" && targetAuthor) {
+    const eventTypeByIntent: Record<string, ModerationEscalationEventType> = {
+      review: "reviewed",
+      hide: "hidden",
+      restore: "restored",
+      dismiss: "dismissed",
+    };
+    const escalationEventType = eventTypeByIntent[intent];
+
+    if (escalationEventType) {
+      await createModerationEscalation({
+        subjectKey: buildModerationSubjectKey(targetUserId, targetAuthor),
+        targetUserId,
+        targetAuthor,
+        reportId,
+        eventType: escalationEventType,
+        reason: reportReason,
+        note: moderatorNote,
+      });
+    }
+  }
+
   revalidatePath("/community");
   revalidatePath("/professionals");
   revalidatePath("/admin-tools/moderation");
@@ -899,6 +948,62 @@ export async function reviewModerationReportAction(formData: FormData) {
   redirect(
     buildPath("/admin-tools/moderation", {
       message: "The moderation queue has been updated.",
+    }),
+  );
+}
+
+export async function saveModerationMemberNoteAction(formData: FormData) {
+  if (!isAdminLookupConfigured()) {
+    redirect(
+      buildPath("/admin-tools/moderation", {
+        error: "Moderation access is not configured yet.",
+      }),
+    );
+  }
+
+  if (!(await hasAdminLookupAccess())) {
+    redirect(
+      buildPath("/admin-tools/moderation", {
+        error: "Unlock the moderation queue first.",
+      }),
+    );
+  }
+
+  const subjectKey = String(formData.get("subjectKey") ?? "").trim();
+  const targetUserId = String(formData.get("targetUserId") ?? "").trim() || null;
+  const targetAuthor = String(formData.get("targetAuthor") ?? "").trim();
+  const note = String(formData.get("note") ?? "");
+
+  if (!subjectKey || !targetAuthor) {
+    redirect(
+      buildPath("/admin-tools/moderation", {
+        error: "That member note was missing important details.",
+      }),
+    );
+  }
+
+  await upsertModerationMemberNote({
+    subjectKey,
+    targetUserId,
+    targetAuthor,
+    note,
+  });
+
+  await createModerationEscalation({
+    subjectKey,
+    targetUserId,
+    targetAuthor,
+    reportId: null,
+    eventType: "member-note-updated",
+    reason: "",
+    note: note.trim(),
+  });
+
+  revalidatePath("/admin-tools/moderation");
+
+  redirect(
+    buildPath("/admin-tools/moderation", {
+      message: "The member-level moderation note has been saved.",
     }),
   );
 }

@@ -17,6 +17,13 @@ export type ModerationActionTaken =
   | "hidden"
   | "restored"
   | "dismissed";
+export type ModerationEscalationEventType =
+  | "report-filed"
+  | "reviewed"
+  | "hidden"
+  | "restored"
+  | "dismissed"
+  | "member-note-updated";
 export type ProfessionalVerificationStatus =
   | "verified"
   | "review-in-progress"
@@ -172,6 +179,26 @@ export type TrustHistoryRecord = {
   dismissedReports: number;
   lastReportedAt: string;
   lastReviewedAt: string | null;
+};
+
+export type ModerationMemberNoteRecord = {
+  subjectKey: string;
+  targetUserId: string | null;
+  targetAuthor: string;
+  note: string;
+  updatedAt: string;
+};
+
+export type ModerationEscalationRecord = {
+  id: string;
+  subjectKey: string;
+  targetUserId: string | null;
+  targetAuthor: string;
+  reportId: string | null;
+  eventType: ModerationEscalationEventType;
+  reason: string;
+  note: string;
+  createdAt: string;
 };
 
 export type RecommendationRecord = ResourceRecord & {
