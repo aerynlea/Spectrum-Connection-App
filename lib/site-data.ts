@@ -361,6 +361,7 @@ export const professionalRoles: ProfessionalRole[] = [
 
 export const verificationSteps = [
   "Professionals share their credentials, specialties, and service areas.",
+  "Listings that are still being checked are clearly marked so families know when review is still in progress.",
   "Guiding Light reviews licenses, affiliations, and public information before adding a verification badge.",
   "Verified professionals are clearly labeled so families know when guidance comes from a licensed provider.",
 ];

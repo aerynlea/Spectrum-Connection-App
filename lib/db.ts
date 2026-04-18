@@ -20,6 +20,7 @@ import type {
   ModerationReportRecord,
   ModerationReportStatus,
   ModerationTargetType,
+  ProfessionalVerificationStatus,
   ProfessionalRecord,
   ResourceRecord,
   SubscriptionStatus,
@@ -101,6 +102,9 @@ type ProfessionalRow = {
   summary: string;
   accepting_new_families: number;
   verified: number;
+  verification_status: ProfessionalVerificationStatus;
+  verification_note: string;
+  verification_updated_at: string | null;
   href: string;
   region_tags: string;
   is_hidden: number;
@@ -121,12 +125,14 @@ type ModerationReportRow = {
   id: string;
   target_type: ModerationTargetType;
   target_id: string;
+  target_user_id: string | null;
   reporter_user_id: string | null;
   reporter_name: string;
   reason: string;
   details: string;
   status: ModerationReportStatus;
   action_taken: ModerationActionTaken;
+  moderator_note: string;
   target_label: string;
   target_excerpt: string;
   target_author: string;
@@ -322,6 +328,9 @@ function getDatabase() {
       summary TEXT NOT NULL,
       accepting_new_families INTEGER NOT NULL DEFAULT 0,
       verified INTEGER NOT NULL DEFAULT 0,
+      verification_status TEXT NOT NULL DEFAULT 'community-shared',
+      verification_note TEXT NOT NULL DEFAULT '',
+      verification_updated_at TEXT,
       is_hidden INTEGER NOT NULL DEFAULT 0,
       href TEXT NOT NULL DEFAULT '',
       region_tags TEXT NOT NULL DEFAULT '[]'
@@ -344,12 +353,14 @@ function getDatabase() {
       id TEXT PRIMARY KEY,
       target_type TEXT NOT NULL,
       target_id TEXT NOT NULL,
+      target_user_id TEXT,
       reporter_user_id TEXT,
       reporter_name TEXT NOT NULL,
       reason TEXT NOT NULL,
       details TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'open',
       action_taken TEXT NOT NULL DEFAULT 'none',
+      moderator_note TEXT NOT NULL DEFAULT '',
       target_label TEXT NOT NULL,
       target_excerpt TEXT NOT NULL,
       target_author TEXT NOT NULL,
@@ -469,6 +480,24 @@ function ensureContentColumns(database: DatabaseSync) {
   ensureColumn(
     database,
     "professionals",
+    "verification_status",
+    "verification_status TEXT NOT NULL DEFAULT 'community-shared'",
+  );
+  ensureColumn(
+    database,
+    "professionals",
+    "verification_note",
+    "verification_note TEXT NOT NULL DEFAULT ''",
+  );
+  ensureColumn(
+    database,
+    "professionals",
+    "verification_updated_at",
+    "verification_updated_at TEXT",
+  );
+  ensureColumn(
+    database,
+    "professionals",
     "region_tags",
     "region_tags TEXT NOT NULL DEFAULT '[]'",
   );
@@ -533,12 +562,14 @@ function ensureContentColumns(database: DatabaseSync) {
       id TEXT PRIMARY KEY,
       target_type TEXT NOT NULL,
       target_id TEXT NOT NULL,
+      target_user_id TEXT,
       reporter_user_id TEXT,
       reporter_name TEXT NOT NULL,
       reason TEXT NOT NULL,
       details TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'open',
       action_taken TEXT NOT NULL DEFAULT 'none',
+      moderator_note TEXT NOT NULL DEFAULT '',
       target_label TEXT NOT NULL,
       target_excerpt TEXT NOT NULL,
       target_author TEXT NOT NULL,
@@ -548,6 +579,19 @@ function ensureContentColumns(database: DatabaseSync) {
     )
   `);
 
+  ensureColumn(
+    database,
+    "moderation_reports",
+    "target_user_id",
+    "target_user_id TEXT",
+  );
+  ensureColumn(
+    database,
+    "moderation_reports",
+    "moderator_note",
+    "moderator_note TEXT NOT NULL DEFAULT ''",
+  );
+
   database.exec(`
     CREATE INDEX IF NOT EXISTS moderation_reports_status_idx
     ON moderation_reports (status, created_at DESC)
@@ -556,6 +600,11 @@ function ensureContentColumns(database: DatabaseSync) {
   database.exec(`
     CREATE INDEX IF NOT EXISTS moderation_reports_target_idx
     ON moderation_reports (target_type, target_id)
+  `);
+
+  database.exec(`
+    CREATE INDEX IF NOT EXISTS moderation_reports_target_user_idx
+    ON moderation_reports (target_user_id, created_at DESC)
   `);
 }
 
@@ -653,6 +702,9 @@ function toProfessional(row: ProfessionalRow): ProfessionalRecord {
     summary: row.summary,
     acceptingNewFamilies: Boolean(row.accepting_new_families),
     verified: Boolean(row.verified),
+    verificationStatus: row.verification_status,
+    verificationNote: row.verification_note,
+    verificationUpdatedAt: row.verification_updated_at,
     href: row.href,
     regionTags: parseJson<string[]>(row.region_tags, []),
     isHidden: Boolean(row.is_hidden),
@@ -677,12 +729,14 @@ function toModerationReport(row: ModerationReportRow): ModerationReportRecord {
     id: row.id,
     targetType: row.target_type,
     targetId: row.target_id,
+    targetUserId: row.target_user_id,
     reporterUserId: row.reporter_user_id,
     reporterName: row.reporter_name,
     reason: row.reason,
     details: row.details,
     status: row.status,
     actionTaken: row.action_taken,
+    moderatorNote: row.moderator_note,
     targetLabel: row.target_label,
     targetExcerpt: row.target_excerpt,
     targetAuthor: row.target_author,
@@ -792,9 +846,12 @@ function seedDatabase(database: DatabaseSync) {
       summary,
       accepting_new_families,
       verified,
+      verification_status,
+      verification_note,
+      verification_updated_at,
       href,
       region_tags
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       title = excluded.title,
@@ -804,6 +861,9 @@ function seedDatabase(database: DatabaseSync) {
       summary = excluded.summary,
       accepting_new_families = excluded.accepting_new_families,
       verified = excluded.verified,
+      verification_status = excluded.verification_status,
+      verification_note = excluded.verification_note,
+      verification_updated_at = excluded.verification_updated_at,
       href = excluded.href,
       region_tags = excluded.region_tags
   `);
@@ -819,6 +879,9 @@ function seedDatabase(database: DatabaseSync) {
       professional.summary,
       professional.acceptingNewFamilies ? 1 : 0,
       professional.verified ? 1 : 0,
+      professional.verificationStatus,
+      professional.verificationNote,
+      professional.verificationUpdatedAt,
       professional.href,
       JSON.stringify(professional.regionTags),
     );
@@ -1426,7 +1489,7 @@ export function createCommunityReply(input: {
   );
 }
 
-export function listProfessionals() {
+export function listProfessionals(includeHidden = false) {
   const rows = database()
     .prepare(`
       SELECT
@@ -1439,11 +1502,14 @@ export function listProfessionals() {
         summary,
         accepting_new_families,
         verified,
+        verification_status,
+        verification_note,
+        verification_updated_at,
         href,
         region_tags,
         is_hidden
       FROM professionals
-      WHERE is_hidden = 0
+      ${includeHidden ? "" : "WHERE is_hidden = 0"}
       ORDER BY verified DESC, accepting_new_families DESC, name ASC
     `)
     .all() as ProfessionalRow[];
@@ -1461,14 +1527,17 @@ export function getProfessionalById(professionalId: string, includeHidden = fals
           focus,
           organization,
           location,
-          summary,
-          accepting_new_families,
-          verified,
-          href,
-          region_tags,
-          is_hidden
-        FROM professionals
-        WHERE id = ?
+        summary,
+        accepting_new_families,
+        verified,
+        verification_status,
+        verification_note,
+        verification_updated_at,
+        href,
+        region_tags,
+        is_hidden
+      FROM professionals
+      WHERE id = ?
       `
     : `
         SELECT
@@ -1478,13 +1547,16 @@ export function getProfessionalById(professionalId: string, includeHidden = fals
           focus,
           organization,
           location,
-          summary,
-          accepting_new_families,
-          verified,
-          href,
-          region_tags,
-          is_hidden
-        FROM professionals
+        summary,
+        accepting_new_families,
+        verified,
+        verification_status,
+        verification_note,
+        verification_updated_at,
+        href,
+        region_tags,
+        is_hidden
+      FROM professionals
         WHERE id = ? AND is_hidden = 0
       `;
 
@@ -1495,6 +1567,7 @@ export function getProfessionalById(professionalId: string, includeHidden = fals
 export function createModerationReport(input: {
   targetType: ModerationTargetType;
   targetId: string;
+  targetUserId: string | null;
   reporterUserId: string | null;
   reporterName: string;
   reason: string;
@@ -1510,28 +1583,32 @@ export function createModerationReport(input: {
       id,
       target_type,
       target_id,
+      target_user_id,
       reporter_user_id,
       reporter_name,
       reason,
       details,
       status,
       action_taken,
+      moderator_note,
       target_label,
       target_excerpt,
       target_author,
       created_at,
       reviewed_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     reportId,
     input.targetType,
     input.targetId,
+    input.targetUserId,
     input.reporterUserId,
     input.reporterName,
     input.reason,
     input.details,
     "open",
     "none",
+    "",
     input.targetLabel,
     input.targetExcerpt,
     input.targetAuthor,
@@ -1549,12 +1626,14 @@ export function listModerationReports() {
         id,
         target_type,
         target_id,
+        target_user_id,
         reporter_user_id,
         reporter_name,
         reason,
         details,
         status,
         action_taken,
+        moderator_note,
         target_label,
         target_excerpt,
         target_author,
@@ -1580,17 +1659,24 @@ export function updateModerationReport(
   input: {
     status: ModerationReportStatus;
     actionTaken: ModerationActionTaken;
+    moderatorNote?: string;
   },
 ) {
   database()
     .prepare(
       `
         UPDATE moderation_reports
-        SET status = ?, action_taken = ?, reviewed_at = ?
+        SET status = ?, action_taken = ?, moderator_note = ?, reviewed_at = ?
         WHERE id = ?
       `,
     )
-    .run(input.status, input.actionTaken, new Date().toISOString(), reportId);
+    .run(
+      input.status,
+      input.actionTaken,
+      input.moderatorNote ?? "",
+      new Date().toISOString(),
+      reportId,
+    );
 }
 
 export function setCommunityPostHidden(postId: string, isHidden: boolean) {
@@ -1609,4 +1695,32 @@ export function setProfessionalHidden(professionalId: string, isHidden: boolean)
   database()
     .prepare("UPDATE professionals SET is_hidden = ? WHERE id = ?")
     .run(isHidden ? 1 : 0, professionalId);
+}
+
+export function updateProfessionalVerification(
+  professionalId: string,
+  input: {
+    verificationStatus: ProfessionalVerificationStatus;
+    verificationNote: string;
+  },
+) {
+  database()
+    .prepare(
+      `
+        UPDATE professionals
+        SET
+          verified = ?,
+          verification_status = ?,
+          verification_note = ?,
+          verification_updated_at = ?
+        WHERE id = ?
+      `,
+    )
+    .run(
+      input.verificationStatus === "verified" ? 1 : 0,
+      input.verificationStatus,
+      input.verificationNote,
+      new Date().toISOString(),
+      professionalId,
+    );
 }

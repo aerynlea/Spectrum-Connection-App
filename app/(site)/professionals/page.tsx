@@ -15,6 +15,36 @@ type ProfessionalsPageProps = {
   searchParams?: PageSearchParams;
 };
 
+function getVerificationLabel(status: string) {
+  switch (status) {
+    case "verified":
+      return "Verified professional";
+    case "review-in-progress":
+      return "Verification in progress";
+    default:
+      return "Community-shared listing";
+  }
+}
+
+function getVerificationSummary(
+  status: string,
+  note: string,
+) {
+  if (note) {
+    return note;
+  }
+
+  if (status === "verified") {
+    return "Credential review and public profile check completed.";
+  }
+
+  if (status === "review-in-progress") {
+    return "This listing is being actively reviewed before it receives a verification badge.";
+  }
+
+  return "Shared for exploration while the trust review is still pending.";
+}
+
 export default async function ProfessionalsPage({
   searchParams,
 }: ProfessionalsPageProps) {
@@ -77,17 +107,23 @@ export default async function ProfessionalsPage({
                 </div>
                 <h4>{professional.focus}</h4>
                 <p className="feature-label">
-                  {professional.verified
-                    ? "Verified professional"
-                    : "Community-sourced listing"}
+                  {getVerificationLabel(professional.verificationStatus)}
                 </p>
                 <p>{professional.summary}</p>
                 <p className="meta-copy">{professional.location}</p>
                 <p className="meta-copy">
-                  {professional.verified
-                    ? "Credential review and public profile check completed."
-                    : "Shared for exploration while the trust review is still pending."}
+                  {getVerificationSummary(
+                    professional.verificationStatus,
+                    professional.verificationNote,
+                  )}
                 </p>
+                {professional.verificationUpdatedAt ? (
+                  <p className="meta-copy">
+                    Last reviewed {new Intl.DateTimeFormat("en-US", {
+                      dateStyle: "medium",
+                    }).format(new Date(professional.verificationUpdatedAt))}
+                  </p>
+                ) : null}
                 <Link
                   className="text-link"
                   href={professional.href}
@@ -137,6 +173,9 @@ export default async function ProfessionalsPage({
             {providerSections.broader.map((professional) => (
               <article className="sub-card" key={professional.id}>
                 <h3>{professional.name}</h3>
+                <p className="feature-label">
+                  {getVerificationLabel(professional.verificationStatus)}
+                </p>
                 <p>{professional.summary}</p>
                 <p className="meta-copy">{professional.location}</p>
                 <Link

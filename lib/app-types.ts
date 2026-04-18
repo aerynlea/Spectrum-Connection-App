@@ -17,6 +17,10 @@ export type ModerationActionTaken =
   | "hidden"
   | "restored"
   | "dismissed";
+export type ProfessionalVerificationStatus =
+  | "verified"
+  | "review-in-progress"
+  | "community-shared";
 
 export type SubscriptionStatus =
   | "inactive"
@@ -130,6 +134,9 @@ export type ProfessionalRecord = {
   summary: string;
   acceptingNewFamilies: boolean;
   verified: boolean;
+  verificationStatus: ProfessionalVerificationStatus;
+  verificationNote: string;
+  verificationUpdatedAt: string | null;
   href: string;
   regionTags: string[];
   isHidden: boolean;
@@ -139,17 +146,32 @@ export type ModerationReportRecord = {
   id: string;
   targetType: ModerationTargetType;
   targetId: string;
+  targetUserId: string | null;
   reporterUserId: string | null;
   reporterName: string;
   reason: string;
   details: string;
   status: ModerationReportStatus;
   actionTaken: ModerationActionTaken;
+  moderatorNote: string;
   targetLabel: string;
   targetExcerpt: string;
   targetAuthor: string;
   createdAt: string;
   reviewedAt: string | null;
+};
+
+export type TrustHistoryRecord = {
+  key: string;
+  targetUserId: string | null;
+  targetAuthor: string;
+  totalReports: number;
+  openReports: number;
+  resolvedReports: number;
+  hiddenActions: number;
+  dismissedReports: number;
+  lastReportedAt: string;
+  lastReviewedAt: string | null;
 };
 
 export type RecommendationRecord = ResourceRecord & {

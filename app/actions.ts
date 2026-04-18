@@ -48,6 +48,7 @@ import {
   setProfessionalHidden,
   toggleSavedResource,
   updateModerationReport,
+  updateProfessionalVerification,
   updateUserPassword,
   updateUserProfile,
 } from "@/lib/data";
@@ -60,6 +61,7 @@ import type {
   AgeGroup,
   GoalKey,
   ModerationTargetType,
+  ProfessionalVerificationStatus,
   UserRole,
 } from "@/lib/app-types";
 import { formatRole } from "@/lib/formatters";
@@ -80,6 +82,12 @@ const validModerationTargets = new Set<ModerationTargetType>([
   "community-reply",
   "professional",
 ]);
+const validProfessionalVerificationStatuses =
+  new Set<ProfessionalVerificationStatus>([
+    "verified",
+    "review-in-progress",
+    "community-shared",
+  ]);
 const validReportReasons = new Set<string>(reportReasonOptions);
 const passwordResetRequestCooldownMs = 1000 * 60 * 5;
 
@@ -149,6 +157,7 @@ async function getModerationTargetSnapshot(
       targetLabel: post.title,
       targetExcerpt: summarizeModerationText(post.body),
       targetAuthor: post.authorName,
+      targetUserId: post.userId,
     };
   }
 
@@ -163,6 +172,7 @@ async function getModerationTargetSnapshot(
       targetLabel: "Community reply",
       targetExcerpt: summarizeModerationText(reply.body),
       targetAuthor: reply.authorName,
+      targetUserId: reply.userId,
     };
   }
 
@@ -176,6 +186,7 @@ async function getModerationTargetSnapshot(
     targetLabel: `${professional.name} • ${professional.title}`,
     targetExcerpt: summarizeModerationText(professional.summary),
     targetAuthor: professional.name,
+    targetUserId: null,
   };
 }
 
@@ -779,6 +790,7 @@ export async function submitModerationReportAction(formData: FormData) {
   await createModerationReport({
     targetType: targetType as ModerationTargetType,
     targetId,
+    targetUserId: snapshot.targetUserId,
     reporterUserId: currentUser.id,
     reporterName: currentUser.name,
     reason,
@@ -822,6 +834,7 @@ export async function reviewModerationReportAction(formData: FormData) {
   const targetType = String(formData.get("targetType") ?? "");
   const targetId = String(formData.get("targetId") ?? "");
   const intent = String(formData.get("intent") ?? "");
+  const moderatorNote = String(formData.get("moderatorNote") ?? "").trim();
 
   if (!reportId || !targetId || !validModerationTargets.has(targetType as ModerationTargetType)) {
     redirect(
@@ -843,6 +856,7 @@ export async function reviewModerationReportAction(formData: FormData) {
     await updateModerationReport(reportId, {
       status: "resolved",
       actionTaken: "hidden",
+      moderatorNote,
     });
   } else if (intent === "restore") {
     if (targetType === "community-post") {
@@ -856,16 +870,19 @@ export async function reviewModerationReportAction(formData: FormData) {
     await updateModerationReport(reportId, {
       status: "resolved",
       actionTaken: "restored",
+      moderatorNote,
     });
   } else if (intent === "dismiss") {
     await updateModerationReport(reportId, {
       status: "dismissed",
       actionTaken: "dismissed",
+      moderatorNote,
     });
   } else if (intent === "review") {
     await updateModerationReport(reportId, {
       status: "reviewed",
       actionTaken: "reviewed",
+      moderatorNote,
     });
   } else {
     redirect(
@@ -882,6 +899,55 @@ export async function reviewModerationReportAction(formData: FormData) {
   redirect(
     buildPath("/admin-tools/moderation", {
       message: "The moderation queue has been updated.",
+    }),
+  );
+}
+
+export async function updateProfessionalVerificationAction(formData: FormData) {
+  if (!isAdminLookupConfigured()) {
+    redirect(
+      buildPath("/admin-tools/moderation", {
+        error: "Moderation access is not configured yet.",
+      }),
+    );
+  }
+
+  if (!(await hasAdminLookupAccess())) {
+    redirect(
+      buildPath("/admin-tools/moderation", {
+        error: "Unlock the moderation queue first.",
+      }),
+    );
+  }
+
+  const professionalId = String(formData.get("professionalId") ?? "");
+  const verificationStatus = String(formData.get("verificationStatus") ?? "");
+  const verificationNote = String(formData.get("verificationNote") ?? "").trim();
+
+  if (
+    !professionalId ||
+    !validProfessionalVerificationStatuses.has(
+      verificationStatus as ProfessionalVerificationStatus,
+    )
+  ) {
+    redirect(
+      buildPath("/admin-tools/moderation", {
+        error: "That verification update was missing important details.",
+      }),
+    );
+  }
+
+  await updateProfessionalVerification(professionalId, {
+    verificationStatus: verificationStatus as ProfessionalVerificationStatus,
+    verificationNote,
+  });
+
+  revalidatePath("/professionals");
+  revalidatePath("/admin-tools/moderation");
+
+  redirect(
+    buildPath("/admin-tools/moderation", {
+      message: "The professional verification review has been updated.",
     }),
   );
 }

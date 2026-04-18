@@ -21,6 +21,7 @@ import type {
   ModerationReportRecord,
   ModerationReportStatus,
   ModerationTargetType,
+  ProfessionalVerificationStatus,
   ProfessionalRecord,
   ResourceRecord,
   SubscriptionStatus,
@@ -102,6 +103,9 @@ type ProfessionalRow = {
   summary: string;
   acceptingNewFamilies: boolean;
   verified: boolean;
+  verificationStatus: ProfessionalVerificationStatus;
+  verificationNote: string;
+  verificationUpdatedAt: string | null;
   href: string;
   region_tags: string;
   isHidden: boolean;
@@ -122,12 +126,14 @@ type ModerationReportRow = {
   id: string;
   targetType: ModerationTargetType;
   targetId: string;
+  targetUserId: string | null;
   reporterUserId: string | null;
   reporterName: string;
   reason: string;
   details: string;
   status: ModerationReportStatus;
   actionTaken: ModerationActionTaken;
+  moderatorNote: string;
   targetLabel: string;
   targetExcerpt: string;
   targetAuthor: string;
@@ -273,6 +279,9 @@ function toProfessional(row: ProfessionalRow): ProfessionalRecord {
     summary: row.summary,
     acceptingNewFamilies: Boolean(row.acceptingNewFamilies),
     verified: Boolean(row.verified),
+    verificationStatus: row.verificationStatus,
+    verificationNote: row.verificationNote,
+    verificationUpdatedAt: row.verificationUpdatedAt,
     href: row.href,
     regionTags: parseJson<string[]>(row.region_tags, []),
     isHidden: Boolean(row.isHidden),
@@ -297,12 +306,14 @@ function toModerationReport(row: ModerationReportRow): ModerationReportRecord {
     id: row.id,
     targetType: row.targetType,
     targetId: row.targetId,
+    targetUserId: row.targetUserId,
     reporterUserId: row.reporterUserId,
     reporterName: row.reporterName,
     reason: row.reason,
     details: row.details,
     status: row.status,
     actionTaken: row.actionTaken,
+    moderatorNote: row.moderatorNote,
     targetLabel: row.targetLabel,
     targetExcerpt: row.targetExcerpt,
     targetAuthor: row.targetAuthor,
@@ -497,10 +508,28 @@ async function seedHostedDatabase() {
       summary TEXT NOT NULL,
       accepting_new_families BOOLEAN NOT NULL DEFAULT false,
       verified BOOLEAN NOT NULL DEFAULT false,
+      verification_status TEXT NOT NULL DEFAULT 'community-shared',
+      verification_note TEXT NOT NULL DEFAULT '',
+      verification_updated_at TEXT,
       is_hidden BOOLEAN NOT NULL DEFAULT false,
       href TEXT NOT NULL DEFAULT '',
       region_tags TEXT NOT NULL DEFAULT '[]'
     )
+  `);
+
+  await sql.query(`
+    ALTER TABLE professionals
+    ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'community-shared'
+  `);
+
+  await sql.query(`
+    ALTER TABLE professionals
+    ADD COLUMN IF NOT EXISTS verification_note TEXT NOT NULL DEFAULT ''
+  `);
+
+  await sql.query(`
+    ALTER TABLE professionals
+    ADD COLUMN IF NOT EXISTS verification_updated_at TEXT
   `);
 
   await sql.query(`
@@ -541,18 +570,30 @@ async function seedHostedDatabase() {
       id TEXT PRIMARY KEY,
       target_type TEXT NOT NULL,
       target_id TEXT NOT NULL,
+      target_user_id TEXT,
       reporter_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
       reporter_name TEXT NOT NULL,
       reason TEXT NOT NULL,
       details TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'open',
       action_taken TEXT NOT NULL DEFAULT 'none',
+      moderator_note TEXT NOT NULL DEFAULT '',
       target_label TEXT NOT NULL,
       target_excerpt TEXT NOT NULL,
       target_author TEXT NOT NULL,
       created_at TEXT NOT NULL,
       reviewed_at TEXT
     )
+  `);
+
+  await sql.query(`
+    ALTER TABLE moderation_reports
+    ADD COLUMN IF NOT EXISTS target_user_id TEXT
+  `);
+
+  await sql.query(`
+    ALTER TABLE moderation_reports
+    ADD COLUMN IF NOT EXISTS moderator_note TEXT NOT NULL DEFAULT ''
   `);
 
   await sql.query(`
@@ -563,6 +604,11 @@ async function seedHostedDatabase() {
   await sql.query(`
     CREATE INDEX IF NOT EXISTS moderation_reports_target_idx
     ON moderation_reports (target_type, target_id)
+  `);
+
+  await sql.query(`
+    CREATE INDEX IF NOT EXISTS moderation_reports_target_user_idx
+    ON moderation_reports (target_user_id, created_at DESC)
   `);
 
   for (const resource of resourceSeeds) {
@@ -659,35 +705,44 @@ async function seedHostedDatabase() {
         focus,
         organization,
         location,
-        summary,
-        accepting_new_families,
-        verified,
-        href,
-        region_tags
-      ) VALUES (
-        ${professional.id},
-        ${professional.name},
+      summary,
+      accepting_new_families,
+      verified,
+      verification_status,
+      verification_note,
+      verification_updated_at,
+      href,
+      region_tags
+    ) VALUES (
+      ${professional.id},
+      ${professional.name},
         ${professional.title},
         ${professional.focus},
         ${professional.organization},
         ${professional.location},
-        ${professional.summary},
-        ${professional.acceptingNewFamilies},
-        ${professional.verified},
-        ${professional.href},
-        ${JSON.stringify(professional.regionTags)}
-      )
-      ON CONFLICT (id) DO UPDATE SET
-        name = EXCLUDED.name,
+      ${professional.summary},
+      ${professional.acceptingNewFamilies},
+      ${professional.verified},
+      ${professional.verificationStatus},
+      ${professional.verificationNote},
+      ${professional.verificationUpdatedAt},
+      ${professional.href},
+      ${JSON.stringify(professional.regionTags)}
+    )
+    ON CONFLICT (id) DO UPDATE SET
+      name = EXCLUDED.name,
         title = EXCLUDED.title,
         focus = EXCLUDED.focus,
         organization = EXCLUDED.organization,
         location = EXCLUDED.location,
-        summary = EXCLUDED.summary,
-        accepting_new_families = EXCLUDED.accepting_new_families,
-        verified = EXCLUDED.verified,
-        href = EXCLUDED.href,
-        region_tags = EXCLUDED.region_tags
+      summary = EXCLUDED.summary,
+      accepting_new_families = EXCLUDED.accepting_new_families,
+      verified = EXCLUDED.verified,
+      verification_status = EXCLUDED.verification_status,
+      verification_note = EXCLUDED.verification_note,
+      verification_updated_at = EXCLUDED.verification_updated_at,
+      href = EXCLUDED.href,
+      region_tags = EXCLUDED.region_tags
     `;
   }
 
@@ -1473,11 +1528,12 @@ export async function createCommunityReply(input: {
   `;
 }
 
-export async function listProfessionals() {
+export async function listProfessionals(includeHidden = false) {
   await ensureHostedDatabase();
   const sql = getSql();
 
-  const rows = (await sql`
+  const rows = includeHidden
+    ? ((await sql`
     SELECT
       id,
       name,
@@ -1488,13 +1544,36 @@ export async function listProfessionals() {
       summary,
       accepting_new_families AS "acceptingNewFamilies",
       verified,
+      verification_status AS "verificationStatus",
+      verification_note AS "verificationNote",
+      verification_updated_at AS "verificationUpdatedAt",
+      href,
+      region_tags,
+      is_hidden AS "isHidden"
+    FROM professionals
+    ORDER BY verified DESC, accepting_new_families DESC, name ASC
+  `) as ProfessionalRow[])
+    : ((await sql`
+    SELECT
+      id,
+      name,
+      title,
+      focus,
+      organization,
+      location,
+      summary,
+      accepting_new_families AS "acceptingNewFamilies",
+      verified,
+      verification_status AS "verificationStatus",
+      verification_note AS "verificationNote",
+      verification_updated_at AS "verificationUpdatedAt",
       href,
       region_tags,
       is_hidden AS "isHidden"
     FROM professionals
     WHERE is_hidden = false
     ORDER BY verified DESC, accepting_new_families DESC, name ASC
-  `) as ProfessionalRow[];
+  `) as ProfessionalRow[]);
 
   return rows.map(toProfessional);
 }
@@ -1516,6 +1595,9 @@ export async function getProfessionalById(professionalId: string, includeHidden 
           summary,
           accepting_new_families AS "acceptingNewFamilies",
           verified,
+          verification_status AS "verificationStatus",
+          verification_note AS "verificationNote",
+          verification_updated_at AS "verificationUpdatedAt",
           href,
           region_tags,
           is_hidden AS "isHidden"
@@ -1533,6 +1615,9 @@ export async function getProfessionalById(professionalId: string, includeHidden 
           summary,
           accepting_new_families AS "acceptingNewFamilies",
           verified,
+          verification_status AS "verificationStatus",
+          verification_note AS "verificationNote",
+          verification_updated_at AS "verificationUpdatedAt",
           href,
           region_tags,
           is_hidden AS "isHidden"
@@ -1548,6 +1633,7 @@ export async function getProfessionalById(professionalId: string, includeHidden 
 export async function createModerationReport(input: {
   targetType: ModerationTargetType;
   targetId: string;
+  targetUserId: string | null;
   reporterUserId: string | null;
   reporterName: string;
   reason: string;
@@ -1565,12 +1651,14 @@ export async function createModerationReport(input: {
       id,
       target_type,
       target_id,
+      target_user_id,
       reporter_user_id,
       reporter_name,
       reason,
       details,
       status,
       action_taken,
+      moderator_note,
       target_label,
       target_excerpt,
       target_author,
@@ -1580,12 +1668,14 @@ export async function createModerationReport(input: {
       ${reportId},
       ${input.targetType},
       ${input.targetId},
+      ${input.targetUserId},
       ${input.reporterUserId},
       ${input.reporterName},
       ${input.reason},
       ${input.details},
       ${"open"},
       ${"none"},
+      ${""},
       ${input.targetLabel},
       ${input.targetExcerpt},
       ${input.targetAuthor},
@@ -1606,12 +1696,14 @@ export async function listModerationReports() {
       id,
       target_type AS "targetType",
       target_id AS "targetId",
+      target_user_id AS "targetUserId",
       reporter_user_id AS "reporterUserId",
       reporter_name AS "reporterName",
       reason,
       details,
       status,
       action_taken AS "actionTaken",
+      moderator_note AS "moderatorNote",
       target_label AS "targetLabel",
       target_excerpt AS "targetExcerpt",
       target_author AS "targetAuthor",
@@ -1636,6 +1728,7 @@ export async function updateModerationReport(
   input: {
     status: ModerationReportStatus;
     actionTaken: ModerationActionTaken;
+    moderatorNote?: string;
   },
 ) {
   await ensureHostedDatabase();
@@ -1646,6 +1739,7 @@ export async function updateModerationReport(
     SET
       status = ${input.status},
       action_taken = ${input.actionTaken},
+      moderator_note = ${input.moderatorNote ?? ""},
       reviewed_at = ${new Date().toISOString()}
     WHERE id = ${reportId}
   `;
@@ -1680,6 +1774,27 @@ export async function setProfessionalHidden(professionalId: string, isHidden: bo
   await sql`
     UPDATE professionals
     SET is_hidden = ${isHidden}
+    WHERE id = ${professionalId}
+  `;
+}
+
+export async function updateProfessionalVerification(
+  professionalId: string,
+  input: {
+    verificationStatus: ProfessionalVerificationStatus;
+    verificationNote: string;
+  },
+) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  await sql`
+    UPDATE professionals
+    SET
+      verified = ${input.verificationStatus === "verified"},
+      verification_status = ${input.verificationStatus},
+      verification_note = ${input.verificationNote},
+      verification_updated_at = ${new Date().toISOString()}
     WHERE id = ${professionalId}
   `;
 }

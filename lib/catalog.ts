@@ -1005,6 +1005,10 @@ export const professionalSeeds: ProfessionalRecord[] = [
       "Supports families with special education guidance, workshops, support groups, and practical navigation help across several Los Angeles County regions.",
     acceptingNewFamilies: true,
     verified: true,
+    verificationStatus: "verified",
+    verificationNote:
+      "Credentials, affiliations, and public family-facing information reviewed.",
+    verificationUpdatedAt: "2026-04-17T00:00:00.000Z",
     isHidden: false,
     href: "https://www.californiafamilyempowermentcenters.org/spotlight-FamilyFocus.html",
     regionTags: [
@@ -1025,6 +1029,10 @@ export const professionalSeeds: ProfessionalRecord[] = [
       "Provides autism-related services, family support, and broader disability programs across Southern California.",
     acceptingNewFamilies: true,
     verified: true,
+    verificationStatus: "verified",
+    verificationNote:
+      "Credentials, affiliations, and public family-facing information reviewed.",
+    verificationUpdatedAt: "2026-04-17T00:00:00.000Z",
     isHidden: false,
     href: "https://www.easterseals.com/southerncal/support-and-education/autism/index-1.html",
     regionTags: ["southern-california", "orange-county", "california"],
@@ -1040,6 +1048,10 @@ export const professionalSeeds: ProfessionalRecord[] = [
       "Helps families and self-advocates connect with support groups, advocacy partners, and regional service pathways.",
     acceptingNewFamilies: true,
     verified: true,
+    verificationStatus: "verified",
+    verificationNote:
+      "Credentials, affiliations, and public family-facing information reviewed.",
+    verificationUpdatedAt: "2026-04-17T00:00:00.000Z",
     isHidden: false,
     href: "https://www.nlacrc.org/get-involved/advocacy/partners-advocacy-groups/",
     regionTags: [
@@ -1060,6 +1072,10 @@ export const professionalSeeds: ProfessionalRecord[] = [
       "Connects autistic people, families, and caregivers with information, resources, and support options across the United States.",
     acceptingNewFamilies: true,
     verified: true,
+    verificationStatus: "verified",
+    verificationNote:
+      "Credentials, affiliations, and public family-facing information reviewed.",
+    verificationUpdatedAt: "2026-04-17T00:00:00.000Z",
     isHidden: false,
     href: "https://www.autismspeaks.org/family-services",
     regionTags: ["nationwide"],
@@ -1075,6 +1091,10 @@ export const professionalSeeds: ProfessionalRecord[] = [
       "Offers family support events, webinars, and parent-focused resources designed to reduce isolation and strengthen confidence.",
     acceptingNewFamilies: true,
     verified: true,
+    verificationStatus: "verified",
+    verificationNote:
+      "Credentials, affiliations, and public family-facing information reviewed.",
+    verificationUpdatedAt: "2026-04-17T00:00:00.000Z",
     isHidden: false,
     href: "https://tacanow.org/way-to-help/be-a-member/",
     regionTags: ["nationwide", "southern-california", "california"],

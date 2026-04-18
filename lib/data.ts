@@ -210,10 +210,10 @@ export async function createCommunityReply(
     : (await getLocal()).createCommunityReply(input);
 }
 
-export async function listProfessionals() {
+export async function listProfessionals(includeHidden = false) {
   return isNeonConfigured
-    ? (await getHosted()).listProfessionals()
-    : (await getLocal()).listProfessionals();
+    ? (await getHosted()).listProfessionals(includeHidden)
+    : (await getLocal()).listProfessionals(includeHidden);
 }
 
 export async function getProfessionalById(
@@ -264,4 +264,13 @@ export async function setProfessionalHidden(professionalId: string, isHidden: bo
   return isNeonConfigured
     ? (await getHosted()).setProfessionalHidden(professionalId, isHidden)
     : (await getLocal()).setProfessionalHidden(professionalId, isHidden);
+}
+
+export async function updateProfessionalVerification(
+  professionalId: string,
+  input: Parameters<LocalModule["updateProfessionalVerification"]>[1],
+) {
+  return isNeonConfigured
+    ? (await getHosted()).updateProfessionalVerification(professionalId, input)
+    : (await getLocal()).updateProfessionalVerification(professionalId, input);
 }

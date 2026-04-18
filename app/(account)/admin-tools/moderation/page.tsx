@@ -4,6 +4,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import {
   lockAdminLookupAction,
   reviewModerationReportAction,
+  updateProfessionalVerificationAction,
   unlockAdminLookupAction,
 } from "@/app/actions";
 import { SectionHeading } from "@/components/section-heading";
@@ -16,12 +17,14 @@ import type {
   ModerationActionTaken,
   ModerationReportRecord,
   ModerationReportStatus,
+  TrustHistoryRecord,
 } from "@/lib/app-types";
 import {
   getCommunityPostById,
   getCommunityReplyById,
   getProfessionalById,
   listModerationReports,
+  listProfessionals,
 } from "@/lib/data";
 import { formatDateTime } from "@/lib/formatters";
 import { getQueryMessage, type PageSearchParams } from "@/lib/search-params";
@@ -80,6 +83,86 @@ function formatTargetType(targetType: ModerationReportRecord["targetType"]) {
   }
 }
 
+function formatVerificationStatus(status: string) {
+  switch (status) {
+    case "verified":
+      return "Verified";
+    case "review-in-progress":
+      return "Review in progress";
+    default:
+      return "Community-shared";
+  }
+}
+
+function buildTrustHistory(reports: ModerationReportRecord[]): TrustHistoryRecord[] {
+  const summaries = new Map<string, TrustHistoryRecord>();
+
+  for (const report of reports) {
+    if (report.targetType === "professional") {
+      continue;
+    }
+
+    const key =
+      report.targetUserId?.trim() || `author:${report.targetAuthor.trim().toLowerCase()}`;
+    const existing = summaries.get(key);
+
+    if (existing) {
+      existing.totalReports += 1;
+      existing.openReports += report.status === "open" ? 1 : 0;
+      existing.resolvedReports += report.status === "resolved" ? 1 : 0;
+      existing.hiddenActions += report.actionTaken === "hidden" ? 1 : 0;
+      existing.dismissedReports += report.status === "dismissed" ? 1 : 0;
+      if (new Date(report.createdAt) > new Date(existing.lastReportedAt)) {
+        existing.lastReportedAt = report.createdAt;
+      }
+      if (
+        report.reviewedAt &&
+        (!existing.lastReviewedAt ||
+          new Date(report.reviewedAt) > new Date(existing.lastReviewedAt))
+      ) {
+        existing.lastReviewedAt = report.reviewedAt;
+      }
+      continue;
+    }
+
+    summaries.set(key, {
+      key,
+      targetUserId: report.targetUserId,
+      targetAuthor: report.targetAuthor,
+      totalReports: 1,
+      openReports: report.status === "open" ? 1 : 0,
+      resolvedReports: report.status === "resolved" ? 1 : 0,
+      hiddenActions: report.actionTaken === "hidden" ? 1 : 0,
+      dismissedReports: report.status === "dismissed" ? 1 : 0,
+      lastReportedAt: report.createdAt,
+      lastReviewedAt: report.reviewedAt,
+    });
+  }
+
+  return Array.from(summaries.values()).sort((left, right) => {
+    if (right.openReports !== left.openReports) {
+      return right.openReports - left.openReports;
+    }
+
+    return (
+      new Date(right.lastReportedAt).getTime() -
+      new Date(left.lastReportedAt).getTime()
+    );
+  });
+}
+
+function describeTrustHistory(history: TrustHistoryRecord) {
+  if (history.openReports > 0) {
+    return "Needs attention";
+  }
+
+  if (history.hiddenActions > 0) {
+    return "Previously moderated";
+  }
+
+  return "Reviewed history";
+}
+
 async function getTargetState(report: ModerationReportRecord): Promise<ModerationTargetState> {
   if (report.targetType === "community-post") {
     const target = await getCommunityPostById(report.targetId, true);
@@ -105,6 +188,8 @@ export default async function ModerationPage({
   const isConfigured = isAdminLookupConfigured();
   const hasAccess = isConfigured ? await hasAdminLookupAccess() : false;
   const reports = hasAccess ? await listModerationReports() : [];
+  const trustHistory = hasAccess ? buildTrustHistory(reports) : [];
+  const professionals = hasAccess ? await listProfessionals(true) : [];
   const reportsWithState = hasAccess
     ? await Promise.all(
         reports.map(async (report) => ({
@@ -305,6 +390,9 @@ export default async function ModerationPage({
                     </p>
                     <p><strong>Reason:</strong> {report.reason}</p>
                     {report.details ? <p><strong>Context:</strong> {report.details}</p> : null}
+                    {report.moderatorNote ? (
+                      <p><strong>Moderator note:</strong> {report.moderatorNote}</p>
+                    ) : null}
                     <p className="meta-copy">{report.targetExcerpt}</p>
                     <div className="pill-list pill-list--compact">
                       <span className="pill">
@@ -315,11 +403,25 @@ export default async function ModerationPage({
                           : "Original item missing"}
                       </span>
                       <span className="pill">{formatAction(report.actionTaken)}</span>
+                      {report.reviewedAt ? (
+                        <span className="pill">
+                          Reviewed {formatDateTime(report.reviewedAt)}
+                        </span>
+                      ) : null}
                     </div>
                     <form action={reviewModerationReportAction} className="form-card">
                       <input name="reportId" type="hidden" value={report.id} />
                       <input name="targetId" type="hidden" value={report.targetId} />
                       <input name="targetType" type="hidden" value={report.targetType} />
+                      <label className="field">
+                        <span>Moderator note</span>
+                        <textarea
+                          defaultValue={report.moderatorNote}
+                          name="moderatorNote"
+                          placeholder="Add the context behind this decision."
+                          rows={3}
+                        />
+                      </label>
                       <div className="button-row">
                         <button
                           className="button-secondary"
@@ -366,6 +468,160 @@ export default async function ModerationPage({
                 <p>No reports are waiting right now.</p>
               </div>
             )}
+          </section>
+
+          <section className="section split-layout">
+            <div className="section-panel">
+              <SectionHeading
+                eyebrow="Trust history"
+                intro="See whether a community member has previous reports, open concerns, or a history that has already been resolved."
+                title="Community trust history at a glance."
+              />
+              {trustHistory.length > 0 ? (
+                <div className="stack-list">
+                  {trustHistory.map((history) => (
+                    <article className="thread-card" key={history.key}>
+                      <div className="thread-card__meta">
+                        <div>
+                          <h3>{history.targetAuthor}</h3>
+                          <p>
+                            {history.targetUserId
+                              ? "Signed-in member"
+                              : "Name-only history from a seeded or legacy post"}
+                          </p>
+                        </div>
+                        <span
+                          className={`status-chip status-chip--${
+                            history.openReports > 0 ? "open" : "reviewed"
+                          }`}
+                        >
+                          {describeTrustHistory(history)}
+                        </span>
+                      </div>
+                      <div className="pill-list pill-list--compact">
+                        <span className="pill">{history.totalReports} total reports</span>
+                        <span className="pill">{history.openReports} open</span>
+                        <span className="pill">{history.resolvedReports} resolved</span>
+                        <span className="pill">{history.hiddenActions} hidden actions</span>
+                      </div>
+                      <p className="meta-copy">
+                        Last reported {formatDateTime(history.lastReportedAt)}
+                        {history.lastReviewedAt
+                          ? ` • Last reviewed ${formatDateTime(history.lastReviewedAt)}`
+                          : ""}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state">
+                  <p>Trust history will appear here as community reports come in.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="section-panel section-panel--accent">
+              <SectionHeading
+                eyebrow="Professional workflow"
+                intro="Review each listing as verified, in progress, or community-shared, and leave a note that explains the current trust state."
+                title="Manage professional verification."
+              />
+              {professionals.length > 0 ? (
+                <div className="stack-list">
+                  {professionals.map((professional) => (
+                    <article className="thread-card" key={professional.id}>
+                      <div className="thread-card__meta">
+                        <div>
+                          <h3>{professional.name}</h3>
+                          <p>
+                            {professional.title} • {professional.organization}
+                          </p>
+                        </div>
+                        <span
+                          className={`status-chip status-chip--${
+                            professional.verificationStatus === "verified"
+                              ? "resolved"
+                              : professional.verificationStatus === "review-in-progress"
+                                ? "reviewed"
+                                : "dismissed"
+                          }`}
+                        >
+                          {formatVerificationStatus(professional.verificationStatus)}
+                        </span>
+                      </div>
+                      <p>{professional.summary}</p>
+                      <p className="meta-copy">
+                        {professional.location}
+                        {professional.verificationUpdatedAt
+                          ? ` • Updated ${formatDateTime(
+                              professional.verificationUpdatedAt,
+                            )}`
+                          : ""}
+                      </p>
+                      <div className="pill-list pill-list--compact">
+                        <span className="pill">
+                          {professional.acceptingNewFamilies
+                            ? "Accepting families"
+                            : "Waitlist"}
+                        </span>
+                        <span className="pill">
+                          {professional.isHidden ? "Hidden from public view" : "Visible publicly"}
+                        </span>
+                      </div>
+                      <form
+                        action={updateProfessionalVerificationAction}
+                        className="form-card"
+                      >
+                        <input
+                          name="professionalId"
+                          type="hidden"
+                          value={professional.id}
+                        />
+                        <label className="field">
+                          <span>Verification note</span>
+                          <textarea
+                            defaultValue={professional.verificationNote}
+                            name="verificationNote"
+                            placeholder="Describe what has been reviewed or what is still pending."
+                            rows={3}
+                          />
+                        </label>
+                        <div className="button-row">
+                          <button
+                            className="button-secondary"
+                            name="verificationStatus"
+                            type="submit"
+                            value="community-shared"
+                          >
+                            Keep community-shared
+                          </button>
+                          <button
+                            className="button-secondary"
+                            name="verificationStatus"
+                            type="submit"
+                            value="review-in-progress"
+                          >
+                            Mark review in progress
+                          </button>
+                          <button
+                            className="button-primary"
+                            name="verificationStatus"
+                            type="submit"
+                            value="verified"
+                          >
+                            Mark verified
+                          </button>
+                        </div>
+                      </form>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state">
+                  <p>Professional listings will appear here when they are available.</p>
+                </div>
+              )}
+            </div>
           </section>
         </>
       )}
