@@ -61,6 +61,14 @@ type QueueSignal = {
   severityLevel: ModerationSeverityLevel;
 };
 
+type AutomationSuggestion = {
+  id: string;
+  title: string;
+  detail: string;
+  recommendedAction: string;
+  severityLevel: ModerationSeverityLevel;
+};
+
 function buildModerationSubjectKey(targetUserId: string | null, targetAuthor: string) {
   const authorKey = targetAuthor.trim().toLowerCase().replace(/\s+/g, " ");
 
@@ -473,6 +481,84 @@ function buildQueueSignals(
   return signals.slice(0, 3);
 }
 
+function buildAutomationSuggestions(
+  prioritizedReports: PrioritizedReport[],
+  trustHistory: TrustHistoryRecord[],
+  memberNoteMap: Map<string, ModerationMemberNoteRecord>,
+): AutomationSuggestion[] {
+  const suggestions: AutomationSuggestion[] = [];
+  const urgentWindowReports = prioritizedReports.filter(
+    (entry) =>
+      entry.report.status === "open" &&
+      (entry.severityLevel === "critical" || entry.severityLevel === "high") &&
+      isRecent(entry.report.createdAt, 3),
+  );
+
+  if (urgentWindowReports.length >= 2) {
+    suggestions.push({
+      id: "digest-cluster",
+      title: "Moderator digest recommended",
+      detail: `${urgentWindowReports.length} high-priority reports were filed in the last 72 hours, which is a strong signal to review them together.`,
+      recommendedAction:
+        "Start with the newest critical report, then review the other high-priority reports in the same session so no pattern gets missed.",
+      severityLevel: "critical",
+    });
+  }
+
+  const privacyOrSafetyReport = urgentWindowReports.find(
+    (entry) =>
+      entry.report.reason === "Privacy concern" ||
+      entry.report.reason === "Misinformation or unsafe advice",
+  );
+
+  if (privacyOrSafetyReport) {
+    suggestions.push({
+      id: `priority-${privacyOrSafetyReport.report.id}`,
+      title: "Immediate safety-style follow-up suggested",
+      detail: `${privacyOrSafetyReport.report.targetAuthor} has an open ${privacyOrSafetyReport.report.reason.toLowerCase()} report that already scored ${formatSeverity(
+        privacyOrSafetyReport.severityLevel,
+      ).toLowerCase()}.`,
+      recommendedAction:
+        "Review the report details first, then decide whether the content should stay visible while the conversation is reviewed.",
+      severityLevel: privacyOrSafetyReport.severityLevel,
+    });
+  }
+
+  const followUpMember = trustHistory.find(
+    (entry) =>
+      (entry.severityLevel === "critical" || entry.severityLevel === "high") &&
+      !memberNoteMap.get(entry.key)?.note,
+  );
+
+  if (followUpMember) {
+    suggestions.push({
+      id: `note-${followUpMember.key}`,
+      title: "Save a member follow-up note",
+      detail: `${followUpMember.targetAuthor} has repeat or high-risk concerns but no persistent member-level moderation note yet.`,
+      recommendedAction:
+        "Add a short member note after review so future moderators have context without re-reading the full history from scratch.",
+      severityLevel: followUpMember.severityLevel,
+    });
+  }
+
+  const unresolvedCluster = trustHistory.find(
+    (entry) => entry.openReports >= 2 && isRecent(entry.lastReportedAt, 7),
+  );
+
+  if (unresolvedCluster) {
+    suggestions.push({
+      id: `cluster-${unresolvedCluster.key}`,
+      title: "Repeat unresolved concerns need follow-up",
+      detail: `${unresolvedCluster.targetAuthor} has ${unresolvedCluster.openReports} open reports and was reported again within the last week.`,
+      recommendedAction:
+        "Review the open reports together and decide whether one coordinated action or moderator note would make the pattern easier to manage going forward.",
+      severityLevel: unresolvedCluster.severityLevel,
+    });
+  }
+
+  return suggestions.slice(0, 4);
+}
+
 function describeTrustHistory(history: TrustHistoryRecord) {
   if (history.severityLevel === "critical") {
     return "Priority follow-up";
@@ -608,6 +694,11 @@ export default async function ModerationPage({
       );
     });
   const queueSignals = buildQueueSignals(prioritizedReports, trustHistory);
+  const automationSuggestions = buildAutomationSuggestions(
+    prioritizedReports,
+    trustHistory,
+    memberNoteMap,
+  );
   const highPriorityReportCount = prioritizedReports.filter(
     (entry) =>
       entry.severityLevel === "critical" || entry.severityLevel === "high",
@@ -786,6 +877,43 @@ export default async function ModerationPage({
                 </div>
               )}
             </div>
+          </section>
+
+          <section className="section">
+            <SectionHeading
+              eyebrow="Automation suggestions"
+              intro="These are smart follow-up prompts based on recent clusters, repeat patterns, and higher-risk report reasons."
+              title="Suggested moderator next steps."
+            />
+            {automationSuggestions.length > 0 ? (
+              <div className="stack-list">
+                {automationSuggestions.map((suggestion) => (
+                  <article className="thread-card" key={suggestion.id}>
+                    <div className="thread-card__meta">
+                      <div>
+                        <h3>{suggestion.title}</h3>
+                      </div>
+                      <span
+                        className={`status-chip status-chip--${suggestion.severityLevel}`}
+                      >
+                        {formatSeverity(suggestion.severityLevel)}
+                      </span>
+                    </div>
+                    <p>{suggestion.detail}</p>
+                    <p className="meta-copy">
+                      <strong>Suggested action:</strong> {suggestion.recommendedAction}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-state">
+                <p>
+                  Automation suggestions will show up here when the queue starts to
+                  detect repeat patterns or urgent clusters.
+                </p>
+              </div>
+            )}
           </section>
 
           <section className="section">
