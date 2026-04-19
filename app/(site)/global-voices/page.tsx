@@ -4,7 +4,9 @@ import Link from "next/link";
 import { SectionHeading } from "@/components/section-heading";
 import {
   autismTerms,
+  communityCreatorReferences,
   globalPerspectives,
+  identitySupportHighlights,
   publicVoices,
   representationHighlights,
 } from "@/lib/global-voices";
@@ -139,6 +141,37 @@ export default function GlobalVoicesPage() {
 
       <section className="section">
         <SectionHeading
+          eyebrow="Queer and LGBTQIA+ autistic communities"
+          intro="Queer, trans, nonbinary, and otherwise LGBTQIA+ autistic people deserve to see their lives recognized here too. Support should make room for identity, safety, joy, and belonging all at once."
+          title="Autistic support should make room for the full person."
+        />
+        <p className="meta-copy" style={{ marginBottom: "1rem" }}>
+          This section brings together current research and affirming community
+          resources so families, self-advocates, and allies can find support
+          that respects both neurodivergence and LGBTQIA+ identity.
+        </p>
+        <div className="card-grid card-grid--three">
+          {identitySupportHighlights.map((highlight) => (
+            <article className="feature-card" key={highlight.title}>
+              <p className="feature-label">{highlight.label}</p>
+              <h3>{highlight.title}</h3>
+              <p>{highlight.summary}</p>
+              <p className="meta-copy">{highlight.takeaway}</p>
+              <Link
+                className="text-link"
+                href={highlight.sourceHref}
+                rel="noreferrer"
+                target="_blank"
+              >
+                Open the source: {highlight.sourceLabel}
+              </Link>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="section">
+        <SectionHeading
           eyebrow="Public voices"
           intro="These public figures and parent advocates have spoken openly about autism in their own lives or families."
           title="Real faces and stories that help people feel seen."
@@ -173,6 +206,34 @@ export default function GlobalVoicesPage() {
                   </Link>
                 </div>
               </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="section">
+        <SectionHeading
+          eyebrow="Community creators and influencers"
+          intro="These references come from the public profile descriptions of creators, advocates, and public figures who are helping autistic and autism-connected communities feel more visible online."
+          title="More voices worth knowing."
+        />
+        <div className="card-grid card-grid--three">
+          {communityCreatorReferences.map((creator) => (
+            <article className="feature-card" key={creator.handle}>
+              <p className="feature-label">{creator.handle}</p>
+              <h3>{creator.name}</h3>
+              <p className="meta-copy" style={{ marginBottom: "0.75rem" }}>
+                {creator.role}
+              </p>
+              <p>{creator.summary}</p>
+              <Link
+                className="text-link"
+                href={creator.sourceHref}
+                rel="noreferrer"
+                target="_blank"
+              >
+                Visit {creator.sourceLabel}
+              </Link>
             </article>
           ))}
         </div>

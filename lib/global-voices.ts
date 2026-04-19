@@ -42,6 +42,24 @@ export type RepresentationHighlight = {
   sourceLabel: string;
 };
 
+export type IdentitySupportHighlight = {
+  label: string;
+  title: string;
+  summary: string;
+  takeaway: string;
+  sourceHref: string;
+  sourceLabel: string;
+};
+
+export type CommunityCreatorReference = {
+  name: string;
+  handle: string;
+  role: string;
+  summary: string;
+  sourceHref: string;
+  sourceLabel: string;
+};
+
 export const autismTerms: AutismTerm[] = [
   {
     country: "Global health",
@@ -243,6 +261,124 @@ export const representationHighlights: RepresentationHighlight[] = [
       "Representation matters because language, trust, and community shape whether support feels usable in real life.",
     sourceHref: "https://www.autisminblack.org/",
     sourceLabel: "Autism in Black",
+  },
+];
+
+export const identitySupportHighlights: IdentitySupportHighlight[] = [
+  {
+    label: "Research and identity",
+    title: "Queer and LGBTQIA+ autistic people deserve support that recognizes both identities.",
+    summary:
+      "SPARK says autistic people are more likely than the general population to identify as LGBTQ+, and that many autistic people also describe gender beyond a strict male-female binary.",
+    takeaway:
+      "Support works better when identity, safety, healthcare, and belonging are all part of the conversation instead of treated like separate issues.",
+    sourceHref: "https://sparkforautism.org/discover_article/autism-lgbtq-identity/",
+    sourceLabel: "SPARK for Autism",
+  },
+  {
+    label: "Community by and for autistic people",
+    title: "Marginalized genders need spaces that already understand autism and gender diversity together.",
+    summary:
+      "AWN describes its mission as providing community support and resources for autistic women, girls, trans people of all genders, Two Spirit people, nonbinary people, and other people of marginalized genders or no gender.",
+    takeaway:
+      "Affirming support is not only about being welcomed. It is also about being understood without having to explain every part of yourself first.",
+    sourceHref: "https://awnnetwork.org/about/",
+    sourceLabel: "Autistic Women & Nonbinary Network",
+  },
+  {
+    label: "Mental health and safety",
+    title: "LGBTQ+ autistic youth need affirming crisis and community options too.",
+    summary:
+      "The Trevor Project offers LGBTQ+ mental health resources, community guides, and support pathways for young people navigating identity, isolation, or safety concerns.",
+    takeaway:
+      "Families and self-advocates should know where affirming help exists before a hard moment turns into an emergency.",
+    sourceHref: "https://www.thetrevorproject.org/resources/",
+    sourceLabel: "The Trevor Project",
+  },
+  {
+    label: "Practical autistic-specific guidance",
+    title: "Autistic LGBTQIA+ people often need resources that speak directly to both lived experiences at once.",
+    summary:
+      "ASERT’s LGBTQI resource page was developed by a young autistic adult in the LGBTQI community to share information, insights, and supports for self-advocates, parents, and families.",
+    takeaway:
+      "The strongest guidance often comes from people living at the intersection, not from resources that only understand one side of it.",
+    sourceHref: "https://paautism.org/resource/lgbtqi/",
+    sourceLabel: "ASERT Autism Resource Guide",
+  },
+];
+
+export const communityCreatorReferences: CommunityCreatorReference[] = [
+  {
+    name: "Kaelynn Partlow",
+    handle: "@kaelynnvp",
+    role: "Autistic advocate, speaker, therapist, and author",
+    summary:
+      "Her public profile centers autistic advocacy, speaking, therapy work, and her visibility through Love on the Spectrum and her book Life on the Bridge.",
+    sourceHref: "https://www.instagram.com/kaelynnvp/",
+    sourceLabel: "Instagram profile",
+  },
+  {
+    name: "Sara",
+    handle: "@saranne_wrap",
+    role: "Late-diagnosed AuDHD creator",
+    summary:
+      "Her public profile describes a late-diagnosed AuDHD perspective and points people toward her TikTok and YouTube spaces for lived-experience content.",
+    sourceHref: "https://www.instagram.com/saranne_wrap/",
+    sourceLabel: "Instagram profile",
+  },
+  {
+    name: "Mercedes LaBria",
+    handle: "@immuffy_",
+    role: "Autism mom and digital creator",
+    summary:
+      "Her public profile identifies her as an autism mom and community-centered creator sharing family-facing content from Mobile, Alabama.",
+    sourceHref: "https://www.instagram.com/immuffy_/",
+    sourceLabel: "Instagram profile",
+  },
+  {
+    name: "Kaeli Fisher",
+    handle: "@_kae_hope_",
+    role: "AuDHD creator and mother",
+    summary:
+      "Her public profile describes an online journal built around autism, fashion, mental health, and parenting from an AuDHD perspective.",
+    sourceHref: "https://www.instagram.com/_kae_hope_/",
+    sourceLabel: "Instagram profile",
+  },
+  {
+    name: "Ayanna Sanaa Davis",
+    handle: "@phenomenallyautistic",
+    role: "Autistic advocate, artist, author, and podcast host",
+    summary:
+      "Her public profile highlights Black autistic leadership through advocacy, art, Black Girl Diagnosed, and Black Autism Acceptance Day.",
+    sourceHref: "https://www.instagram.com/phenomenallyautistic/",
+    sourceLabel: "Instagram profile",
+  },
+  {
+    name: "Savant De'Shawn Devereaux",
+    handle: "@savanttheeprodigy",
+    role: "AuDHD creator and performer",
+    summary:
+      "His public profile describes an AuDHD perspective shaped by creativity, performance, and a strong personal voice across social platforms.",
+    sourceHref: "https://www.instagram.com/savanttheeprodigy/",
+    sourceLabel: "Instagram profile",
+  },
+  {
+    name: "Ashley Prentiss",
+    handle: "@ashleyprentiss",
+    role: "Autism advocate and parent creator",
+    summary:
+      "Her public profile centers autism advocacy, motherhood, and encouraging public-facing storytelling through her community brand.",
+    sourceHref: "https://www.instagram.com/ashleyprentiss/",
+    sourceLabel: "Instagram profile",
+  },
+  {
+    name: "Demi Burnett",
+    handle: "@demi_not_lovato",
+    role: "Autistic, ADHD, and PDA public figure",
+    summary:
+      "Her public profile openly names autism, ADHD, and PDA, giving followers another visible public example of neurodivergent identity in entertainment and media culture.",
+    sourceHref: "https://www.instagram.com/demi_not_lovato/",
+    sourceLabel: "Instagram profile",
   },
 ];
 
