@@ -267,10 +267,22 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               <p>{highlight.description}</p>
             </article>
           ))}
+          <article className="feature-card">
+            <p className="feature-label">Queer and LGBTQIA+</p>
+            <h3>See autistic lives that hold identity, safety, and belonging together.</h3>
+            <p>
+              The global voices page now also includes affirming LGBTQIA+
+              autistic support resources and creator references from public
+              community voices.
+            </p>
+          </article>
         </div>
         <div className="button-row">
-          <Link className="button-secondary" href="/global-voices">
+          <Link className="button-primary" href="/global-voices">
             Explore global voices
+          </Link>
+          <Link className="button-secondary" href="/global-voices#creator-references">
+            See queer and creator voices
           </Link>
         </div>
       </section>

@@ -55,7 +55,7 @@ export default function GlobalVoicesPage() {
         </div>
       </section>
 
-      <section className="section">
+      <section className="section" id="identity-support">
         <SectionHeading
           eyebrow="Autism in many languages"
           intro="These are representative examples of official or organization-used terms from different countries and regions."
@@ -83,7 +83,7 @@ export default function GlobalVoicesPage() {
         </div>
       </section>
 
-      <section className="section">
+      <section className="section" id="creator-references">
         <SectionHeading
           eyebrow="How support is described"
           intro="These sources do not all say the exact same thing, but they often point in a shared direction."
