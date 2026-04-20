@@ -5,19 +5,19 @@ Instagram profile: `https://www.instagram.com/theguidinglightconnect/`
 ## First 5 feed posts
 
 1. `Welcome to Guiding Light`
-   Use the matching carousel from `/instagram-kit#welcome-to-guiding-light`
+   Use the exported PNGs in `deliverables/instagram-launch-kit/posts/post-01-welcome-to-guiding-light`
 
 2. `Start Here for Families`
-   Use the matching carousel from `/instagram-kit#start-here-for-families`
+   Use the exported PNGs in `deliverables/instagram-launch-kit/posts/post-02-start-here-for-families`
 
 3. `Global Voices and Belonging`
-   Use the matching carousel from `/instagram-kit#global-voices-and-belonging`
+   Use the exported PNGs in `deliverables/instagram-launch-kit/posts/post-03-global-voices-and-belonging`
 
 4. `Calmer Outings and Everyday Support`
-   Use the matching carousel from `/instagram-kit#calmer-outings-and-everyday-support`
+   Use the exported PNGs in `deliverables/instagram-launch-kit/posts/post-04-calmer-outings-and-everyday-support`
 
 5. `Community, Events, and Trusted Guidance`
-   Use the matching carousel from `/instagram-kit#community-events-and-trusted-guidance`
+   Use the exported PNGs in `deliverables/instagram-launch-kit/posts/post-05-community-events-and-trusted-guidance`
 
 ## Posting rhythm
 
@@ -42,4 +42,4 @@ Instagram profile: `https://www.instagram.com/theguidinglightconnect/`
 
 ## Export tip
 
-The cards at `/instagram-kit` are built in a portrait-friendly 4:5 layout so you can screenshot or export them into Instagram carousel slides.
+The generated slides are already exported as 1080x1350 PNG files, which is a strong portrait-friendly size for Instagram feed carousels.
