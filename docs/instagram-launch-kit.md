@@ -11,15 +11,27 @@ Zip file:
 ## What the package contains
 
 - `posts/`
-  10 carousel posts with `slide-01.png` through `slide-05.png` and one `caption.txt` per post
+  15 carousel posts with `slide-01.png` through `slide-05.png`
+- `caption.txt`
+  one primary caption per post inside each post folder
+- `caption-alt-01.txt` and `caption-alt-02.txt`
+  two caption variations per post inside each post folder
+- `captions.md`
+  all primary captions in one file
+- `caption-variations.md`
+  all caption alternatives in one file
 - `story-highlights/`
   matching highlight cover PNGs
 - `reel-covers/`
   reel cover PNGs
+- `story-text-overlays/`
+  vertical story-ready text overlays that point people back to the feed carousels
 - `launch-calendar/launch-calendar.md`
-  written post order and exact dates
-- `launch-calendar/launch-calendar.csv`
-  spreadsheet-friendly version of the same schedule
+  month 1 posting plan
+- `launch-calendar/month-2-launch-calendar.md`
+  month 2 posting plan
+- `launch-calendar/*.csv`
+  spreadsheet-friendly versions of both calendars
 
 ## Feed posts included
 
@@ -33,13 +45,18 @@ Zip file:
 8. `Queer and LGBTQIA+ Autistic Belonging`
 9. `Questions to Ask Your Support Team`
 10. `Seeing Black and Brown Families More Clearly`
+11. `Adulthood, Work, and Independent Living`
+12. `Haircuts, Grooming, and Sensory Care`
+13. `Caregiver Support and Home-Based Help`
+14. `Safer Community and Verified Support`
+15. `Why Guiding Light Exists`
 
-## Suggested posting rhythm
+## Suggested use
 
-- Use the included launch calendar for the exact dates and order
-- Feed posts are paced across five weeks
-- Reel covers are spaced between carousel posts
-- Story highlight covers can be uploaded before the first week begins
+- Use the month 1 calendar first
+- Move into the month 2 calendar for the next wave
+- Use the story overlays the day after a carousel post to bring people back to it
+- Use reel covers for simple screen-record or talking-head reels
 
 ## Story highlights
 
@@ -52,15 +69,9 @@ Zip file:
 - `Guides`
 - `Tools`
 
-## Simple call to action options
-
-- `Save this for later.`
-- `Share this with a family who may need it.`
-- `Visit theguidinglight.com for more.`
-- `Follow @theguidinglightconnect for resources and support.`
-
 ## Export sizes
 
 - Feed posts are exported as `1080x1350` PNGs
 - Story highlight covers are exported as `1080x1920` PNGs
 - Reel covers are exported as `1080x1920` PNGs
+- Story text overlays are exported as `1080x1920` PNGs
