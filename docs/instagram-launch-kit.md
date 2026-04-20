@@ -2,27 +2,44 @@
 
 Instagram profile: `https://www.instagram.com/theguidinglightconnect/`
 
-## First 5 feed posts
+Local export folder:
+`/Users/aerynwoullard/GuidingLightApp/Spectrum-Connection-App/deliverables/instagram-launch-kit`
+
+Zip file:
+`/Users/aerynwoullard/GuidingLightApp/Spectrum-Connection-App/deliverables/instagram-launch-kit/guiding-light-instagram-launch-kit.zip`
+
+## What the package contains
+
+- `posts/`
+  10 carousel posts with `slide-01.png` through `slide-05.png` and one `caption.txt` per post
+- `story-highlights/`
+  matching highlight cover PNGs
+- `reel-covers/`
+  reel cover PNGs
+- `launch-calendar/launch-calendar.md`
+  written post order and exact dates
+- `launch-calendar/launch-calendar.csv`
+  spreadsheet-friendly version of the same schedule
+
+## Feed posts included
 
 1. `Welcome to Guiding Light`
-   Use the exported PNGs in `deliverables/instagram-launch-kit/posts/post-01-welcome-to-guiding-light`
-
 2. `Start Here for Families`
-   Use the exported PNGs in `deliverables/instagram-launch-kit/posts/post-02-start-here-for-families`
-
 3. `Global Voices and Belonging`
-   Use the exported PNGs in `deliverables/instagram-launch-kit/posts/post-03-global-voices-and-belonging`
-
 4. `Calmer Outings and Everyday Support`
-   Use the exported PNGs in `deliverables/instagram-launch-kit/posts/post-04-calmer-outings-and-everyday-support`
-
 5. `Community, Events, and Trusted Guidance`
-   Use the exported PNGs in `deliverables/instagram-launch-kit/posts/post-05-community-events-and-trusted-guidance`
+6. `California Parent Guide and IEP Support`
+7. `Communication, Sensory, and Play Tools`
+8. `Queer and LGBTQIA+ Autistic Belonging`
+9. `Questions to Ask Your Support Team`
+10. `Seeing Black and Brown Families More Clearly`
 
-## Posting rhythm
+## Suggested posting rhythm
 
-- Week 1: Post 1, Post 2, Post 3
-- Week 2: Post 4, Post 5, then a story recap with a link sticker to the website
+- Use the included launch calendar for the exact dates and order
+- Feed posts are paced across five weeks
+- Reel covers are spaced between carousel posts
+- Story highlight covers can be uploaded before the first week begins
 
 ## Story highlights
 
@@ -32,6 +49,8 @@ Instagram profile: `https://www.instagram.com/theguidinglightconnect/`
 - `Community`
 - `Global Voices`
 - `Outings`
+- `Guides`
+- `Tools`
 
 ## Simple call to action options
 
@@ -40,6 +59,8 @@ Instagram profile: `https://www.instagram.com/theguidinglightconnect/`
 - `Visit theguidinglight.com for more.`
 - `Follow @theguidinglightconnect for resources and support.`
 
-## Export tip
+## Export sizes
 
-The generated slides are already exported as 1080x1350 PNG files, which is a strong portrait-friendly size for Instagram feed carousels.
+- Feed posts are exported as `1080x1350` PNGs
+- Story highlight covers are exported as `1080x1920` PNGs
+- Reel covers are exported as `1080x1920` PNGs
