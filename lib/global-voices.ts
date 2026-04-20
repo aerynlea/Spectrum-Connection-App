@@ -372,6 +372,15 @@ export const communityCreatorReferences: CommunityCreatorReference[] = [
     sourceLabel: "Instagram profile",
   },
   {
+    name: "Brianna Barajas",
+    handle: "@briannabarajas02",
+    role: "Community creator",
+    summary:
+      "Her Instagram is included here as another autism-connected community voice for people exploring Guiding Light's creator references and lived-experience perspectives online.",
+    sourceHref: "https://www.instagram.com/briannabarajas02/",
+    sourceLabel: "Instagram profile",
+  },
+  {
     name: "Demi Burnett",
     handle: "@demi_not_lovato",
     role: "Autistic, ADHD, and PDA public figure",
