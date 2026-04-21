@@ -69,7 +69,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               {currentUser ? "Explore resources" : "Create your profile"}
             </Link>
             <Link className="button-secondary" href="/resources">
-              Browse support
+              Browse resources
             </Link>
           </div>
           <div className="pill-list" aria-label="Audience groups">
