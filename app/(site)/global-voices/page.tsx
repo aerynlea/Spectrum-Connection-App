@@ -12,6 +12,9 @@ import {
 } from "@/lib/global-voices";
 
 export default function GlobalVoicesPage() {
+  const creatorAvatarUrl = (handle: string) =>
+    `https://unavatar.io/instagram/${handle.replace(/^@/, "")}`;
+
   return (
     <div className="page">
       <section className="page-intro">
@@ -77,6 +80,43 @@ export default function GlobalVoicesPage() {
                 target="_blank"
               >
                 Visit source: {term.sourceLabel}
+              </Link>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="section">
+        <SectionHeading
+          eyebrow="Instagram creators and influencers"
+          intro="These references come from the public profile descriptions of creators, advocates, and public figures helping autistic and autism-connected communities feel more visible online."
+          title="More voices worth knowing."
+        />
+        <div className="card-grid card-grid--three">
+          {communityCreatorReferences.map((creator) => (
+            <article className="feature-card creator-card" key={creator.handle}>
+              <div className="creator-card__header">
+                <div
+                  aria-hidden="true"
+                  className="creator-card__avatar"
+                  style={{ backgroundImage: `url(${creatorAvatarUrl(creator.handle)})` }}
+                >
+                  {creator.name.charAt(0)}
+                </div>
+                <div className="creator-card__header-copy">
+                  <p className="feature-label">{creator.handle}</p>
+                  <h3>{creator.name}</h3>
+                  <p className="meta-copy creator-card__role">{creator.role}</p>
+                </div>
+              </div>
+              <p>{creator.summary}</p>
+              <Link
+                className="text-link"
+                href={creator.sourceHref}
+                rel="noreferrer"
+                target="_blank"
+              >
+                Visit {creator.sourceLabel}
               </Link>
             </article>
           ))}
@@ -206,34 +246,6 @@ export default function GlobalVoicesPage() {
                   </Link>
                 </div>
               </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="section">
-        <SectionHeading
-          eyebrow="Community creators and influencers"
-          intro="These references come from the public profile descriptions of creators, advocates, and public figures who are helping autistic and autism-connected communities feel more visible online."
-          title="More voices worth knowing."
-        />
-        <div className="card-grid card-grid--three">
-          {communityCreatorReferences.map((creator) => (
-            <article className="feature-card" key={creator.handle}>
-              <p className="feature-label">{creator.handle}</p>
-              <h3>{creator.name}</h3>
-              <p className="meta-copy" style={{ marginBottom: "0.75rem" }}>
-                {creator.role}
-              </p>
-              <p>{creator.summary}</p>
-              <Link
-                className="text-link"
-                href={creator.sourceHref}
-                rel="noreferrer"
-                target="_blank"
-              >
-                Visit {creator.sourceLabel}
-              </Link>
             </article>
           ))}
         </div>

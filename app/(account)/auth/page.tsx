@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { signInAction, signUpAction } from "@/app/actions";
 import { GoalCheckboxes } from "@/components/goal-checkboxes";
+import { NewsletterOptInField } from "@/components/newsletter-opt-in-field";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusBanner } from "@/components/status-banner";
 import { getCurrentUser } from "@/lib/auth";
@@ -199,6 +200,8 @@ export default async function AuthPage({ searchParams }: AuthPageProps) {
                 </p>
                 <GoalCheckboxes />
               </div>
+
+              <NewsletterOptInField />
 
               <button className="button-primary" type="submit">
                 Create account

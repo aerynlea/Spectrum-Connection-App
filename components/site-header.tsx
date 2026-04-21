@@ -5,6 +5,7 @@ import { AppearanceControls } from "@/components/appearance-controls";
 import { BrandMark } from "@/components/brand-mark";
 import { ClerkUserButton } from "@/components/clerk-user-button";
 import { SignOutForm } from "@/components/sign-out-form";
+import { hasAdminLookupAccess } from "@/lib/admin-access";
 import { getCurrentUser } from "@/lib/auth";
 import { isClerkConfigured } from "@/lib/platform";
 
@@ -20,6 +21,7 @@ const navItems = [
 export async function SiteHeader() {
   noStore();
   const currentUser = await getCurrentUser();
+  const hasAdminAccess = await hasAdminLookupAccess();
   const signInHref = isClerkConfigured ? "/sign-in" : "/auth";
 
   return (
@@ -53,6 +55,11 @@ export async function SiteHeader() {
                     {item.label}
                   </Link>
                 ))}
+                {hasAdminAccess ? (
+                  <Link className="mobile-nav__link" href="/admin-tools/members">
+                    Admin
+                  </Link>
+                ) : null}
               </div>
 
               <div className="mobile-nav__divider" />
@@ -92,6 +99,11 @@ export async function SiteHeader() {
               {item.label}
             </Link>
           ))}
+          {hasAdminAccess ? (
+            <Link className="nav-link" href="/admin-tools/members">
+              Admin
+            </Link>
+          ) : null}
           <AppearanceControls variant="popover" />
           {currentUser ? (
             <>

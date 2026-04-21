@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 
 import { updateProfileAction, type ProfileActionState } from "@/app/actions";
 import { GoalCheckboxes } from "@/components/goal-checkboxes";
+import { NewsletterOptInField } from "@/components/newsletter-opt-in-field";
 import { ageGroupOptions, roleOptions } from "@/lib/catalog";
 import type { AppUser } from "@/lib/app-types";
 
@@ -79,6 +80,10 @@ export function ProfileForm({ currentUser }: ProfileFormProps) {
         </p>
         <GoalCheckboxes selected={currentUser.goals} />
       </div>
+
+      <NewsletterOptInField
+        defaultChecked={currentUser.newsletterSubscribed}
+      />
 
       {state.message ? (
         <p

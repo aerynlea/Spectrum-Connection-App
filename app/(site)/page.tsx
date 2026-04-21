@@ -60,13 +60,13 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               className="button-primary"
               href={
                 currentUser
-                  ? "/dashboard"
+                  ? "/resources"
                   : isClerkConfigured
                     ? "/sign-up"
                     : "/auth"
               }
             >
-              {currentUser ? "Open your space" : "Create your profile"}
+              {currentUser ? "Explore resources" : "Create your profile"}
             </Link>
             <Link className="button-secondary" href="/resources">
               Browse support
@@ -107,7 +107,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               </p>
               <h2>
                 {currentUser
-                  ? "Your space is ready with support that fits your priorities."
+                  ? "Support that fits your priorities is still easy to explore."
                   : "A calm place to connect, explore, and feel supported."}
               </h2>
             </div>
@@ -412,7 +412,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           <p className="eyebrow">When you&apos;re ready</p>
           <h2>
             {currentUser
-              ? "Keep shaping a support space that fits your needs."
+              ? "Keep exploring support that fits your needs."
               : "Create a profile so the support you need is easier to return to."}
           </h2>
           <p>
@@ -425,13 +425,13 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             className="button-primary"
             href={
               currentUser
-                ? "/dashboard"
+                ? "/resources"
                 : isClerkConfigured
                   ? "/sign-up"
                   : "/auth"
             }
           >
-            {currentUser ? "Go to your space" : "Get started"}
+            {currentUser ? "Browse support" : "Get started"}
           </Link>
           <Link className="button-secondary" href="/community">
             See community conversations

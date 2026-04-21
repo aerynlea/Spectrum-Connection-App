@@ -1148,6 +1148,47 @@ a {
   border-color: color-mix(in srgb, var(--secondary) 30%, var(--border));
 }
 
+.creator-card {
+  position: relative;
+  padding-top: 2.4rem;
+}
+
+.creator-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.creator-card__header-copy {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.creator-card__role {
+  margin: 0;
+}
+
+.creator-card__avatar {
+  flex-shrink: 0;
+  display: grid;
+  place-items: end center;
+  width: 4rem;
+  height: 4rem;
+  margin-top: -3.2rem;
+  border: 3px solid var(--surface-strong);
+  border-radius: 999px;
+  background-color: color-mix(in srgb, var(--secondary) 36%, var(--surface-strong));
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  box-shadow: var(--shadow);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.92rem;
+  font-weight: 900;
+  overflow: hidden;
+}
+
 .term-card h3 {
   font-size: 1.28rem;
   line-height: 1.28;
@@ -1764,6 +1805,67 @@ a {
   width: 1rem;
   height: 1rem;
   margin: 0.15rem 0 0;
+}
+
+.checkbox-pill__content {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.checkbox-pill__content strong {
+  font-size: 0.98rem;
+}
+
+.checkbox-pill__content span {
+  color: var(--muted);
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+.roster-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--card-soft-border);
+  border-radius: calc(var(--rounded) - 2px);
+  background: var(--surface-strong);
+  box-shadow: var(--shadow);
+}
+
+.roster-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.roster-table th,
+.roster-table td {
+  padding: 1rem 1.1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--card-soft-border);
+}
+
+.roster-table th {
+  font-size: 0.84rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.roster-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.roster-table tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--soft-fill) 42%, transparent);
+}
+
+.roster-email {
+  color: var(--primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.roster-email:hover,
+.roster-email:focus-visible {
+  text-decoration: underline;
 }
 
 .save-button {

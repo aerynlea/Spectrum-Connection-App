@@ -16,6 +16,7 @@ import type {
   CommunityReplyRecord,
   EventRecord,
   MembershipTier,
+  MemberRosterRecord,
   ModerationActionTaken,
   ModerationEscalationEventType,
   ModerationEscalationRecord,
@@ -48,7 +49,18 @@ type UserRow = {
   subscription_status: SubscriptionStatus;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
+  newsletter_subscribed: number;
+  newsletter_subscribed_at: string | null;
   created_at: string;
+};
+
+type MemberRosterRow = {
+  id: string;
+  name: string;
+  email: string;
+  created_at: string;
+  newsletter_subscribed: number;
+  newsletter_subscribed_at: string | null;
 };
 
 type ResourceRow = {
@@ -201,6 +213,7 @@ export type CreateUserInput = {
   subscriptionStatus?: SubscriptionStatus;
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
+  newsletterSubscribed?: boolean;
 };
 
 export type ProfileUpdateInput = {
@@ -210,6 +223,7 @@ export type ProfileUpdateInput = {
   location: string;
   goals: GoalKey[];
   onboardingCompleted?: boolean;
+  newsletterSubscribed?: boolean;
 };
 
 export type MembershipUpdateInput = {
@@ -219,11 +233,15 @@ export type MembershipUpdateInput = {
   stripeSubscriptionId?: string | null;
 };
 
+export type NewsletterSubscriptionUpdateInput = {
+  newsletterSubscribed: boolean;
+};
+
 const dataDirectory = process.env.VERCEL
   ? join("/tmp", "guiding-light-data")
   : join(process.cwd(), "data");
 const databasePath = join(dataDirectory, "guiding-light.db");
-const schemaVersion = "2026-04-moderation-trust-history";
+const schemaVersion = "2026-04-newsletter-roster";
 
 const globalForDatabase = globalThis as typeof globalThis & {
   guidingLightDb?: DatabaseSync;
@@ -268,7 +286,9 @@ function getDatabase() {
       membership_tier TEXT NOT NULL DEFAULT 'free',
       subscription_status TEXT NOT NULL DEFAULT 'inactive',
       stripe_customer_id TEXT,
-      stripe_subscription_id TEXT
+      stripe_subscription_id TEXT,
+      newsletter_subscribed INTEGER NOT NULL DEFAULT 0,
+      newsletter_subscribed_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS sessions (
@@ -467,6 +487,16 @@ function ensureUserColumns(database: DatabaseSync) {
 
   if (!columnNames.has("stripe_subscription_id")) {
     database.exec("ALTER TABLE users ADD COLUMN stripe_subscription_id TEXT");
+  }
+
+  if (!columnNames.has("newsletter_subscribed")) {
+    database.exec(
+      "ALTER TABLE users ADD COLUMN newsletter_subscribed INTEGER NOT NULL DEFAULT 0",
+    );
+  }
+
+  if (!columnNames.has("newsletter_subscribed_at")) {
+    database.exec("ALTER TABLE users ADD COLUMN newsletter_subscribed_at TEXT");
   }
 
   database.exec(`
@@ -719,7 +749,20 @@ function toUser(row: UserRow): AppUser {
     subscriptionStatus: row.subscription_status,
     stripeCustomerId: row.stripe_customer_id,
     stripeSubscriptionId: row.stripe_subscription_id,
+    newsletterSubscribed: Boolean(row.newsletter_subscribed),
+    newsletterSubscribedAt: row.newsletter_subscribed_at,
     createdAt: row.created_at,
+  };
+}
+
+function toMemberRosterRecord(row: MemberRosterRow): MemberRosterRecord {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    createdAt: row.created_at,
+    newsletterSubscribed: Boolean(row.newsletter_subscribed),
+    newsletterSubscribedAt: row.newsletter_subscribed_at,
   };
 }
 
@@ -1047,7 +1090,7 @@ export function getStats() {
 export function getUserByEmail(email: string) {
   const row = database()
     .prepare(
-      "SELECT id, name, email, auth_provider, external_auth_id, role, age_group, location, goals, verified, onboarding_completed, membership_tier, subscription_status, stripe_customer_id, stripe_subscription_id, created_at FROM users WHERE lower(email) = lower(?)",
+      "SELECT id, name, email, auth_provider, external_auth_id, role, age_group, location, goals, verified, onboarding_completed, membership_tier, subscription_status, stripe_customer_id, stripe_subscription_id, newsletter_subscribed, newsletter_subscribed_at, created_at FROM users WHERE lower(email) = lower(?)",
     )
     .get(email) as UserRow | undefined;
 
@@ -1057,7 +1100,7 @@ export function getUserByEmail(email: string) {
 export function getUserByExternalAuthId(externalAuthId: string) {
   const row = database()
     .prepare(
-      "SELECT id, name, email, auth_provider, external_auth_id, role, age_group, location, goals, verified, onboarding_completed, membership_tier, subscription_status, stripe_customer_id, stripe_subscription_id, created_at FROM users WHERE external_auth_id = ?",
+      "SELECT id, name, email, auth_provider, external_auth_id, role, age_group, location, goals, verified, onboarding_completed, membership_tier, subscription_status, stripe_customer_id, stripe_subscription_id, newsletter_subscribed, newsletter_subscribed_at, created_at FROM users WHERE external_auth_id = ?",
     )
     .get(externalAuthId) as UserRow | undefined;
 
@@ -1075,7 +1118,7 @@ export function getUserAuthByEmail(email: string) {
 export function getUserById(userId: string) {
   const row = database()
     .prepare(
-      "SELECT id, name, email, auth_provider, external_auth_id, role, age_group, location, goals, verified, onboarding_completed, membership_tier, subscription_status, stripe_customer_id, stripe_subscription_id, created_at FROM users WHERE id = ?",
+      "SELECT id, name, email, auth_provider, external_auth_id, role, age_group, location, goals, verified, onboarding_completed, membership_tier, subscription_status, stripe_customer_id, stripe_subscription_id, newsletter_subscribed, newsletter_subscribed_at, created_at FROM users WHERE id = ?",
     )
     .get(userId) as UserRow | undefined;
 
@@ -1085,6 +1128,8 @@ export function getUserById(userId: string) {
 export function createUser(input: CreateUserInput) {
   const userId = randomUUID();
   const createdAt = new Date().toISOString();
+  const newsletterSubscribed = Boolean(input.newsletterSubscribed);
+  const newsletterSubscribedAt = newsletterSubscribed ? createdAt : null;
 
   database().prepare(`
     INSERT INTO users (
@@ -1104,8 +1149,10 @@ export function createUser(input: CreateUserInput) {
       membership_tier,
       subscription_status,
       stripe_customer_id,
-      stripe_subscription_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      stripe_subscription_id,
+      newsletter_subscribed,
+      newsletter_subscribed_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     userId,
     input.name,
@@ -1124,9 +1171,21 @@ export function createUser(input: CreateUserInput) {
     input.subscriptionStatus ?? "inactive",
     input.stripeCustomerId ?? null,
     input.stripeSubscriptionId ?? null,
+    newsletterSubscribed ? 1 : 0,
+    newsletterSubscribedAt,
   );
 
   return getUserById(userId);
+}
+
+export function listMemberRoster() {
+  const rows = database()
+    .prepare(
+      "SELECT id, name, email, created_at, newsletter_subscribed, newsletter_subscribed_at FROM users ORDER BY created_at DESC, lower(name) ASC, lower(email) ASC",
+    )
+    .all() as MemberRosterRow[];
+
+  return rows.map((row) => toMemberRosterRecord(row));
 }
 
 export function upsertHostedUser(input: {
@@ -1181,6 +1240,14 @@ export function updateUserProfile(userId: string, input: ProfileUpdateInput) {
     input,
     "onboardingCompleted",
   );
+  const shouldUpdateNewsletter = Object.prototype.hasOwnProperty.call(
+    input,
+    "newsletterSubscribed",
+  );
+  const newsletterSubscribed = Boolean(input.newsletterSubscribed);
+  const newsletterSubscribedAt = newsletterSubscribed
+    ? new Date().toISOString()
+    : null;
 
   database().prepare(`
     UPDATE users
@@ -1193,6 +1260,15 @@ export function updateUserProfile(userId: string, input: ProfileUpdateInput) {
       onboarding_completed = CASE
         WHEN ? THEN ?
         ELSE onboarding_completed
+      END,
+      newsletter_subscribed = CASE
+        WHEN ? THEN ?
+        ELSE newsletter_subscribed
+      END,
+      newsletter_subscribed_at = CASE
+        WHEN ? AND ? THEN COALESCE(newsletter_subscribed_at, ?)
+        WHEN ? THEN NULL
+        ELSE newsletter_subscribed_at
       END
     WHERE id = ?
   `).run(
@@ -1203,6 +1279,40 @@ export function updateUserProfile(userId: string, input: ProfileUpdateInput) {
     JSON.stringify(input.goals),
     shouldUpdateOnboarding ? 1 : 0,
     input.onboardingCompleted ? 1 : 0,
+    shouldUpdateNewsletter ? 1 : 0,
+    newsletterSubscribed ? 1 : 0,
+    shouldUpdateNewsletter ? 1 : 0,
+    newsletterSubscribed ? 1 : 0,
+    newsletterSubscribedAt,
+    shouldUpdateNewsletter ? 1 : 0,
+    userId,
+  );
+
+  return getUserById(userId);
+}
+
+export function updateUserNewsletterSubscription(
+  userId: string,
+  input: NewsletterSubscriptionUpdateInput,
+) {
+  const newsletterSubscribed = Boolean(input.newsletterSubscribed);
+  const newsletterSubscribedAt = newsletterSubscribed
+    ? new Date().toISOString()
+    : null;
+
+  database().prepare(`
+    UPDATE users
+    SET
+      newsletter_subscribed = ?,
+      newsletter_subscribed_at = CASE
+        WHEN ? THEN COALESCE(newsletter_subscribed_at, ?)
+        ELSE NULL
+      END
+    WHERE id = ?
+  `).run(
+    newsletterSubscribed ? 1 : 0,
+    newsletterSubscribed ? 1 : 0,
+    newsletterSubscribedAt,
     userId,
   );
 

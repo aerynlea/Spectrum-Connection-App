@@ -17,6 +17,7 @@ import type {
   EventRecord,
   GoalKey,
   MembershipTier,
+  MemberRosterRecord,
   ModerationActionTaken,
   ModerationEscalationEventType,
   ModerationEscalationRecord,
@@ -47,7 +48,18 @@ type UserRow = {
   subscription_status: SubscriptionStatus;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
+  newsletter_subscribed: boolean;
+  newsletter_subscribed_at: string | null;
   created_at: string;
+};
+
+type MemberRosterRow = {
+  id: string;
+  name: string;
+  email: string;
+  created_at: string;
+  newsletter_subscribed: boolean;
+  newsletter_subscribed_at: string | null;
 };
 
 type SessionRow = {
@@ -187,6 +199,7 @@ export type CreateUserInput = {
   subscriptionStatus?: SubscriptionStatus;
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
+  newsletterSubscribed?: boolean;
 };
 
 export type ProfileUpdateInput = {
@@ -196,6 +209,7 @@ export type ProfileUpdateInput = {
   location: string;
   goals: GoalKey[];
   onboardingCompleted?: boolean;
+  newsletterSubscribed?: boolean;
 };
 
 export type MembershipUpdateInput = {
@@ -203,6 +217,10 @@ export type MembershipUpdateInput = {
   subscriptionStatus?: SubscriptionStatus;
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
+};
+
+export type NewsletterSubscriptionUpdateInput = {
+  newsletterSubscribed: boolean;
 };
 
 const globalForNeon = globalThis as typeof globalThis & {
@@ -248,7 +266,20 @@ function toUser(row: UserRow): AppUser {
     subscriptionStatus: row.subscription_status,
     stripeCustomerId: row.stripe_customer_id,
     stripeSubscriptionId: row.stripe_subscription_id,
+    newsletterSubscribed: Boolean(row.newsletter_subscribed),
+    newsletterSubscribedAt: row.newsletter_subscribed_at,
     createdAt: row.created_at,
+  };
+}
+
+function toMemberRosterRecord(row: MemberRosterRow): MemberRosterRecord {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    createdAt: row.created_at,
+    newsletterSubscribed: Boolean(row.newsletter_subscribed),
+    newsletterSubscribedAt: row.newsletter_subscribed_at,
   };
 }
 
@@ -394,7 +425,9 @@ async function seedHostedDatabase() {
       membership_tier TEXT NOT NULL DEFAULT 'free',
       subscription_status TEXT NOT NULL DEFAULT 'inactive',
       stripe_customer_id TEXT,
-      stripe_subscription_id TEXT
+      stripe_subscription_id TEXT,
+      newsletter_subscribed BOOLEAN NOT NULL DEFAULT false,
+      newsletter_subscribed_at TEXT
     )
   `);
 
@@ -421,6 +454,16 @@ async function seedHostedDatabase() {
   await sql.query(`
     ALTER TABLE users
     ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT
+  `);
+
+  await sql.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS newsletter_subscribed BOOLEAN NOT NULL DEFAULT false
+  `);
+
+  await sql.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS newsletter_subscribed_at TEXT
   `);
 
   await sql.query(`
@@ -913,6 +956,8 @@ export async function getUserByEmail(email: string) {
       subscription_status,
       stripe_customer_id,
       stripe_subscription_id,
+      newsletter_subscribed,
+      newsletter_subscribed_at,
       created_at
     FROM users
     WHERE lower(email) = lower(${email})
@@ -942,6 +987,8 @@ export async function getUserByExternalAuthId(externalAuthId: string) {
       subscription_status,
       stripe_customer_id,
       stripe_subscription_id,
+      newsletter_subscribed,
+      newsletter_subscribed_at,
       created_at
     FROM users
     WHERE external_auth_id = ${externalAuthId}
@@ -986,6 +1033,8 @@ export async function getUserById(userId: string) {
       subscription_status,
       stripe_customer_id,
       stripe_subscription_id,
+      newsletter_subscribed,
+      newsletter_subscribed_at,
       created_at
     FROM users
     WHERE id = ${userId}
@@ -1000,6 +1049,8 @@ export async function createUser(input: CreateUserInput) {
 
   const userId = randomUUID();
   const createdAt = new Date().toISOString();
+  const newsletterSubscribed = Boolean(input.newsletterSubscribed);
+  const newsletterSubscribedAt = newsletterSubscribed ? createdAt : null;
 
   await sql`
     INSERT INTO users (
@@ -1019,7 +1070,9 @@ export async function createUser(input: CreateUserInput) {
       membership_tier,
       subscription_status,
       stripe_customer_id,
-      stripe_subscription_id
+      stripe_subscription_id,
+      newsletter_subscribed,
+      newsletter_subscribed_at
     ) VALUES (
       ${userId},
       ${input.name},
@@ -1037,11 +1090,32 @@ export async function createUser(input: CreateUserInput) {
       ${input.membershipTier ?? "free"},
       ${input.subscriptionStatus ?? "inactive"},
       ${input.stripeCustomerId ?? null},
-      ${input.stripeSubscriptionId ?? null}
+      ${input.stripeSubscriptionId ?? null},
+      ${newsletterSubscribed},
+      ${newsletterSubscribedAt}
     )
   `;
 
   return getUserById(userId);
+}
+
+export async function listMemberRoster() {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  const rows = (await sql`
+    SELECT
+      id,
+      name,
+      email,
+      created_at,
+      newsletter_subscribed,
+      newsletter_subscribed_at
+    FROM users
+    ORDER BY created_at DESC, lower(name) ASC, lower(email) ASC
+  `) as MemberRosterRow[];
+
+  return rows.map((row) => toMemberRosterRecord(row));
 }
 
 export async function upsertHostedUser(input: {
@@ -1100,6 +1174,14 @@ export async function updateUserProfile(userId: string, input: ProfileUpdateInpu
     input,
     "onboardingCompleted",
   );
+  const shouldUpdateNewsletter = Object.prototype.hasOwnProperty.call(
+    input,
+    "newsletterSubscribed",
+  );
+  const newsletterSubscribed = Boolean(input.newsletterSubscribed);
+  const newsletterSubscribedAt = newsletterSubscribed
+    ? new Date().toISOString()
+    : null;
 
   await sql`
     UPDATE users
@@ -1112,6 +1194,44 @@ export async function updateUserProfile(userId: string, input: ProfileUpdateInpu
       onboarding_completed = CASE
         WHEN ${shouldUpdateOnboarding} THEN ${input.onboardingCompleted ?? false}
         ELSE onboarding_completed
+      END,
+      newsletter_subscribed = CASE
+        WHEN ${shouldUpdateNewsletter} THEN ${newsletterSubscribed}
+        ELSE newsletter_subscribed
+      END,
+      newsletter_subscribed_at = CASE
+        WHEN ${shouldUpdateNewsletter} AND ${newsletterSubscribed}
+          THEN COALESCE(newsletter_subscribed_at, ${newsletterSubscribedAt})
+        WHEN ${shouldUpdateNewsletter}
+          THEN NULL
+        ELSE newsletter_subscribed_at
+      END
+    WHERE id = ${userId}
+  `;
+
+  return getUserById(userId);
+}
+
+export async function updateUserNewsletterSubscription(
+  userId: string,
+  input: NewsletterSubscriptionUpdateInput,
+) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  const newsletterSubscribed = Boolean(input.newsletterSubscribed);
+  const newsletterSubscribedAt = newsletterSubscribed
+    ? new Date().toISOString()
+    : null;
+
+  await sql`
+    UPDATE users
+    SET
+      newsletter_subscribed = ${newsletterSubscribed},
+      newsletter_subscribed_at = CASE
+        WHEN ${newsletterSubscribed}
+          THEN COALESCE(newsletter_subscribed_at, ${newsletterSubscribedAt})
+        ELSE NULL
       END
     WHERE id = ${userId}
   `;

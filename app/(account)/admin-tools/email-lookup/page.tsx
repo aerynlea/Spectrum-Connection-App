@@ -5,6 +5,7 @@ import {
   lockAdminLookupAction,
   unlockAdminLookupAction,
 } from "@/app/actions";
+import { AdminToolLinks } from "@/components/admin-tool-links";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusBanner } from "@/components/status-banner";
 import {
@@ -83,6 +84,7 @@ export default async function EmailLookupPage({
               title="Open the email lookup tool."
             />
             <form action={unlockAdminLookupAction} className="form-card">
+              <input name="returnTo" type="hidden" value="/admin-tools/email-lookup" />
               <label className="field">
                 <span>Lookup key</span>
                 <input
@@ -159,11 +161,11 @@ export default async function EmailLookupPage({
               </div>
             </form>
 
+            <AdminToolLinks active="email-lookup" />
+
             <div className="button-row">
-              <Link className="button-secondary" href="/admin-tools/moderation">
-                Open moderation queue
-              </Link>
               <form action={lockAdminLookupAction}>
+                <input name="returnTo" type="hidden" value="/admin-tools/email-lookup" />
                 <button className="button-secondary" type="submit">
                   Lock tool
                 </button>

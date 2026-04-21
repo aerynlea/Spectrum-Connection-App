@@ -40,6 +40,7 @@ import {
   getCommunityReplyById,
   getLatestPasswordResetTokenForUser,
   getProfessionalById,
+  listMemberRoster,
   getUserAuthByEmail,
   getUserByEmail,
   getPasswordResetToken,
@@ -56,9 +57,15 @@ import {
 } from "@/lib/data";
 import {
   isPasswordResetEmailConfigured,
+  isNewsletterEmailConfigured,
+  sendNewsletterEmail,
   sendPasswordResetEmail,
 } from "@/lib/email";
 import { hasPremiumAccess } from "@/lib/membership";
+import {
+  buildNewsletterUnsubscribeUrl,
+  getNewsletterPostalAddress,
+} from "@/lib/newsletter";
 import type {
   AgeGroup,
   ModerationEscalationEventType,
@@ -93,6 +100,11 @@ const validProfessionalVerificationStatuses =
   ]);
 const validReportReasons = new Set<string>(reportReasonOptions);
 const passwordResetRequestCooldownMs = 1000 * 60 * 5;
+const validAdminReturnPaths = new Set([
+  "/admin-tools/email-lookup",
+  "/admin-tools/members",
+  "/admin-tools/moderation",
+]);
 
 export type ProfileActionState = {
   status: "idle" | "success" | "error";
@@ -133,6 +145,19 @@ function pickAgeGroup(value: FormDataEntryValue | null) {
   return validAgeGroups.has(ageGroup as AgeGroup)
     ? (ageGroup as AgeGroup)
     : null;
+}
+
+function pickNewsletterPreference(formData: FormData) {
+  return formData.get("newsletterSubscribed") !== null;
+}
+
+function pickAdminReturnTo(
+  value: FormDataEntryValue | null,
+  fallback: string,
+) {
+  const returnTo = String(value ?? "").trim();
+
+  return validAdminReturnPaths.has(returnTo) ? returnTo : fallback;
 }
 
 function summarizeModerationText(value: string, maxLength = 180) {
@@ -203,6 +228,7 @@ function revalidateAppShell() {
   revalidatePath("/");
   revalidatePath("/auth");
   revalidatePath("/admin-tools/email-lookup");
+  revalidatePath("/admin-tools/members");
   revalidatePath("/admin-tools/moderation");
   revalidatePath("/community");
   revalidatePath("/dashboard");
@@ -215,10 +241,14 @@ function revalidateAppShell() {
 
 export async function unlockAdminLookupAction(formData: FormData) {
   const key = String(formData.get("key") ?? "");
+  const returnTo = pickAdminReturnTo(
+    formData.get("returnTo"),
+    "/admin-tools/email-lookup",
+  );
 
   if (!isAdminLookupConfigured()) {
     redirect(
-      buildPath("/admin-tools/email-lookup", {
+      buildPath(returnTo, {
         error: "The admin lookup tool is not configured yet.",
       }),
     );
@@ -228,23 +258,28 @@ export async function unlockAdminLookupAction(formData: FormData) {
 
   if (!granted) {
     redirect(
-      buildPath("/admin-tools/email-lookup", {
+      buildPath(returnTo, {
         error: "That lookup key did not match.",
       }),
     );
   }
 
   redirect(
-    buildPath("/admin-tools/email-lookup", {
+    buildPath(returnTo, {
       message: "Private lookup access is open for this session.",
     }),
   );
 }
 
-export async function lockAdminLookupAction() {
+export async function lockAdminLookupAction(formData: FormData) {
+  const returnTo = pickAdminReturnTo(
+    formData.get("returnTo"),
+    "/admin-tools/email-lookup",
+  );
+
   await clearAdminLookupAccess();
   redirect(
-    buildPath("/admin-tools/email-lookup", {
+    buildPath(returnTo, {
       message: "The lookup tool has been locked again.",
     }),
   );
@@ -262,6 +297,7 @@ export async function signUpAction(formData: FormData) {
   const role = pickRole(formData.get("role"));
   const ageGroup = pickAgeGroup(formData.get("ageGroup"));
   const goals = pickGoals(formData);
+  const newsletterSubscribed = pickNewsletterPreference(formData);
 
   if (!name || !email || !password || !location || !role || !ageGroup) {
     redirect(
@@ -305,6 +341,7 @@ export async function signUpAction(formData: FormData) {
     goals,
     verified: false,
     onboardingCompleted: false,
+    newsletterSubscribed,
   });
 
   if (!user) {
@@ -539,6 +576,7 @@ export async function updateProfileAction(
   const role = pickRole(formData.get("role"));
   const ageGroup = pickAgeGroup(formData.get("ageGroup"));
   const goals = pickGoals(formData);
+  const newsletterSubscribed = pickNewsletterPreference(formData);
 
   if (!name || !location || !role || !ageGroup || goals.length === 0) {
     return {
@@ -553,6 +591,7 @@ export async function updateProfileAction(
     ageGroup,
     location,
     goals,
+    newsletterSubscribed,
   });
 
   revalidateAppShell();
@@ -569,6 +608,7 @@ export async function completeOnboardingAction(formData: FormData) {
   const role = pickRole(formData.get("role"));
   const ageGroup = pickAgeGroup(formData.get("ageGroup"));
   const goals = pickGoals(formData);
+  const newsletterSubscribed = pickNewsletterPreference(formData);
 
   if (!name || !location || !role || !ageGroup || goals.length === 0) {
     redirect(
@@ -585,6 +625,7 @@ export async function completeOnboardingAction(formData: FormData) {
     location,
     goals,
     onboardingCompleted: true,
+    newsletterSubscribed,
   });
 
   if (updatedUser) {
@@ -599,6 +640,99 @@ export async function completeOnboardingAction(formData: FormData) {
   redirect(
     buildPath("/dashboard", {
       message: "Your support space is ready.",
+    }),
+  );
+}
+
+export async function sendNewsletterAction(formData: FormData) {
+  const hasAccess = await hasAdminLookupAccess();
+
+  if (!hasAccess) {
+    redirect(
+      buildPath("/admin-tools/members", {
+        error: "Unlock the member roster before sending newsletter emails.",
+      }),
+    );
+  }
+
+  if (!isNewsletterEmailConfigured()) {
+    redirect(
+      buildPath("/admin-tools/members", {
+        error: "Newsletter sending is not configured yet.",
+      }),
+    );
+  }
+
+  const postalAddress = getNewsletterPostalAddress();
+
+  if (!postalAddress) {
+    redirect(
+      buildPath("/admin-tools/members", {
+        error: "Add NEWSLETTER_POSTAL_ADDRESS before sending newsletter emails.",
+      }),
+    );
+  }
+
+  const subject = String(formData.get("subject") ?? "").trim();
+  const body = String(formData.get("body") ?? "").trim();
+
+  if (!subject || !body) {
+    redirect(
+      buildPath("/admin-tools/members", {
+        error: "Add both a subject and message before sending the newsletter.",
+      }),
+    );
+  }
+
+  const recipients = (await listMemberRoster()).filter(
+    (member) => member.newsletterSubscribed,
+  );
+
+  if (recipients.length === 0) {
+    redirect(
+      buildPath("/admin-tools/members", {
+        error: "No members have opted into newsletter emails yet.",
+      }),
+    );
+  }
+
+  let deliveredCount = 0;
+  let failedCount = 0;
+
+  for (const recipient of recipients) {
+    const delivered = await sendNewsletterEmail({
+      name: recipient.name,
+      to: recipient.email,
+      subject,
+      body,
+      unsubscribeUrl: buildNewsletterUnsubscribeUrl(recipient),
+      postalAddress,
+    });
+
+    if (delivered) {
+      deliveredCount += 1;
+    } else {
+      failedCount += 1;
+    }
+  }
+
+  revalidatePath("/admin-tools/members");
+
+  if (failedCount > 0) {
+    redirect(
+      buildPath("/admin-tools/members", {
+        error: `Sent ${deliveredCount} newsletter email${
+          deliveredCount === 1 ? "" : "s"
+        }, but ${failedCount} did not go through.`,
+      }),
+    );
+  }
+
+  redirect(
+    buildPath("/admin-tools/members", {
+      message: `Newsletter sent to ${deliveredCount} subscribed member${
+        deliveredCount === 1 ? "" : "s"
+      }.`,
     }),
   );
 }

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 
 import {
@@ -8,6 +7,7 @@ import {
   updateProfessionalVerificationAction,
   unlockAdminLookupAction,
 } from "@/app/actions";
+import { AdminToolLinks } from "@/components/admin-tool-links";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusBanner } from "@/components/status-banner";
 import {
@@ -755,6 +755,7 @@ export default async function ModerationPage({
               title="Unlock the moderation queue."
             />
             <form action={unlockAdminLookupAction} className="form-card">
+              <input name="returnTo" type="hidden" value="/admin-tools/moderation" />
               <label className="field">
                 <span>Lookup key</span>
                 <input
@@ -837,11 +838,10 @@ export default async function ModerationPage({
                   <span>Members needing follow-up</span>
                 </article>
               </div>
+              <AdminToolLinks active="moderation" />
               <div className="button-row">
-                <Link className="button-secondary" href="/admin-tools/email-lookup">
-                  Open email lookup
-                </Link>
                 <form action={lockAdminLookupAction}>
+                  <input name="returnTo" type="hidden" value="/admin-tools/moderation" />
                   <button className="button-secondary" type="submit">
                     Lock tool
                   </button>

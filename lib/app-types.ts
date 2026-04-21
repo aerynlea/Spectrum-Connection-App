@@ -77,7 +77,18 @@ export type AppUser = {
   subscriptionStatus: SubscriptionStatus;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
+  newsletterSubscribed: boolean;
+  newsletterSubscribedAt: string | null;
   createdAt: string;
+};
+
+export type MemberRosterRecord = {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+  newsletterSubscribed: boolean;
+  newsletterSubscribedAt: string | null;
 };
 
 export type ResourceRecord = {

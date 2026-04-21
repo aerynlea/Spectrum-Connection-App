@@ -1,6 +1,7 @@
 import { completeOnboardingAction } from "@/app/actions";
 import { FormSubmitButton } from "@/components/form-submit-button";
 import { GoalCheckboxes } from "@/components/goal-checkboxes";
+import { NewsletterOptInField } from "@/components/newsletter-opt-in-field";
 import { ageGroupOptions, roleOptions } from "@/lib/catalog";
 import type { AppUser } from "@/lib/app-types";
 
@@ -58,6 +59,10 @@ export function OnboardingForm({ currentUser }: OnboardingFormProps) {
         </p>
         <GoalCheckboxes selected={currentUser.goals} />
       </div>
+
+      <NewsletterOptInField
+        defaultChecked={currentUser.newsletterSubscribed}
+      />
 
       <FormSubmitButton
         idleLabel="Finish onboarding"

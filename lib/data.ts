@@ -38,6 +38,12 @@ export async function getUserById(userId: string) {
     : (await getLocal()).getUserById(userId);
 }
 
+export async function listMemberRoster() {
+  return isNeonConfigured
+    ? (await getHosted()).listMemberRoster()
+    : (await getLocal()).listMemberRoster();
+}
+
 export async function createUser(
   input: Parameters<LocalModule["createUser"]>[0],
 ) {
@@ -61,6 +67,15 @@ export async function updateUserProfile(
   return isNeonConfigured
     ? (await getHosted()).updateUserProfile(userId, input)
     : (await getLocal()).updateUserProfile(userId, input);
+}
+
+export async function updateUserNewsletterSubscription(
+  userId: string,
+  input: Parameters<LocalModule["updateUserNewsletterSubscription"]>[1],
+) {
+  return isNeonConfigured
+    ? (await getHosted()).updateUserNewsletterSubscription(userId, input)
+    : (await getLocal()).updateUserNewsletterSubscription(userId, input);
 }
 
 export async function updateUserMembership(
