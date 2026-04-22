@@ -2092,6 +2092,116 @@ a {
   line-height: 1.6;
 }
 
+.page-loading .page-intro {
+  padding-bottom: 1.5rem;
+}
+
+.loading-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.loading-stack {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.loading-card,
+.loading-list-item {
+  border: 1px solid var(--card-soft-border);
+  border-radius: 24px;
+  background: var(--card-soft-bg);
+  box-shadow: var(--card-soft-shadow);
+}
+
+.loading-card {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1.2rem;
+}
+
+.loading-list {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1.25rem;
+}
+
+.loading-list-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.9rem;
+  align-items: start;
+  padding: 1rem 1.1rem;
+}
+
+.loading-dot {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--surface-tint) 72%, white),
+      color-mix(in srgb, var(--surface-strong) 92%, white),
+      color-mix(in srgb, var(--surface-tint) 72%, white)
+    );
+  background-size: 200% 100%;
+  animation: loading-shimmer 1.4s ease-in-out infinite;
+}
+
+.loading-line {
+  height: 0.92rem;
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--surface-tint) 72%, white),
+      color-mix(in srgb, var(--surface-strong) 92%, white),
+      color-mix(in srgb, var(--surface-tint) 72%, white)
+    );
+  background-size: 200% 100%;
+  animation: loading-shimmer 1.4s ease-in-out infinite;
+}
+
+.loading-line--eyebrow {
+  width: 10rem;
+  height: 0.78rem;
+}
+
+.loading-line--title {
+  width: min(26rem, 88%);
+  height: 1.55rem;
+}
+
+.loading-line--card-title {
+  width: 72%;
+  height: 1.15rem;
+}
+
+.loading-line--chip {
+  width: 6rem;
+  height: 0.78rem;
+}
+
+.loading-line--body {
+  width: 100%;
+}
+
+.loading-line--short {
+  width: 64%;
+}
+
+@keyframes loading-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
 @media (max-width: 1100px) {
   .card-grid--five {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2137,6 +2247,7 @@ a {
   .split-layout,
   .card-grid--three,
   .card-grid--two,
+  .loading-grid,
   .term-grid,
   .voice-grid,
   .stats-grid,
