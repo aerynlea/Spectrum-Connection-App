@@ -84,7 +84,7 @@ export async function SiteHeader() {
                       Sign in
                     </Link>
                     <Link className="nav-cta mobile-nav__action" href="/resources">
-                      Browse support
+                      Browse resources
                     </Link>
                   </>
                 )}
@@ -118,7 +118,7 @@ export async function SiteHeader() {
                 Sign in
               </Link>
               <Link className="nav-cta" href="/resources">
-                Browse support
+                Browse resources
               </Link>
             </>
           )}
