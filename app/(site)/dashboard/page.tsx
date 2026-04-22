@@ -6,6 +6,7 @@ import { SaveResourceForm } from "@/components/save-resource-form";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusBanner } from "@/components/status-banner";
 import { SupportPlanProgressForm } from "@/components/support-plan-progress-form";
+import { SupportPlanQuickActions } from "@/components/support-plan-quick-actions";
 import { requireCurrentUser } from "@/lib/auth";
 import {
   listCommunityPosts,
@@ -28,6 +29,7 @@ import { buildPremiumRoadmap } from "@/lib/membership";
 import { buildRecommendations } from "@/lib/recommendations";
 import { getQueryMessage, type PageSearchParams } from "@/lib/search-params";
 import {
+  getSupportPlanDueNow,
   ensureCurrentSupportPlanForUser,
   getSupportPlanUpcomingFollowUps,
   getSupportPlanProgress,
@@ -65,6 +67,28 @@ function getSupportStepStatusClassName(status: string) {
       return "support-step-chip--done";
     default:
       return "support-step-chip--not-started";
+  }
+}
+
+function getSupportReminderChipClassName(bucket: "overdue" | "today" | "thisWeek") {
+  switch (bucket) {
+    case "overdue":
+      return "status-chip--due-overdue";
+    case "today":
+      return "status-chip--due-today";
+    default:
+      return "status-chip--due-week";
+  }
+}
+
+function getSupportReminderLabel(bucket: "overdue" | "today" | "thisWeek") {
+  switch (bucket) {
+    case "overdue":
+      return "Overdue";
+    case "today":
+      return "Due today";
+    default:
+      return "Later this week";
   }
 }
 
@@ -121,6 +145,14 @@ export default async function DashboardPage({
   const waitingOnSteps = supportPlan ? getSupportPlanWaitingOn(supportPlan) : [];
   const upcomingFollowUps = supportPlan ? getSupportPlanUpcomingFollowUps(supportPlan) : [];
   const weeklyWins = supportPlan ? getSupportPlanWins(supportPlan) : [];
+  const dueNow = supportPlan ? getSupportPlanDueNow(supportPlan) : null;
+  const dueNowSummary = dueNow
+    ? [
+        dueNow.overdue.length > 0 ? `${dueNow.overdue.length} overdue` : null,
+        dueNow.today.length > 0 ? `${dueNow.today.length} due today` : null,
+        dueNow.thisWeek.length > 0 ? `${dueNow.thisWeek.length} later this week` : null,
+      ].filter((label): label is string => Boolean(label))
+    : [];
 
   return (
     <div className="page">
@@ -155,6 +187,10 @@ export default async function DashboardPage({
         <article className="stat-card stat-card--wide">
           <strong>{recommendations.events.length}</strong>
           <span>Upcoming events</span>
+        </article>
+        <article className="stat-card stat-card--wide">
+          <strong>{dueNow?.totalCount ?? 0}</strong>
+          <span>Follow-ups due now</span>
         </article>
       </section>
 
@@ -266,15 +302,125 @@ export default async function DashboardPage({
 
       {supportPlan ? (
         <section className="section split-layout">
-          <div className="section-panel section-panel--accent">
-            <SectionHeading
-              eyebrow="Follow-through tracker"
-              intro="Keep track of responses, next check-ins, and what still needs a gentle nudge."
-              title="Waiting on and follow up next."
-            />
-            <div className="stack-list">
-              <article className="sub-card">
-                <h3>Waiting on</h3>
+        <div className="section-panel section-panel--accent">
+          <SectionHeading
+            eyebrow="Follow-through tracker"
+            intro="Bring urgent check-ins forward first, then keep track of responses, next dates, and what still needs a gentle nudge."
+            title="Due now, waiting on, and follow up next."
+          />
+          <div className="stack-list">
+            <article className="sub-card">
+              <div className="support-reminder-group__header">
+                <div>
+                  <h3>Due now</h3>
+                  <p className="meta-copy">
+                    Overdue items, today&apos;s reminders, and the rest of this
+                    week&apos;s follow-ups stay close so the next touchpoint feels easier.
+                  </p>
+                </div>
+                <span
+                  className={[
+                    "status-chip",
+                    dueNow?.totalCount
+                      ? "status-chip--due-overdue"
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  {dueNow?.totalCount ?? 0} active
+                </span>
+              </div>
+              {dueNow && dueNow.totalCount > 0 ? (
+                <div className="stack-list">
+                  <div className="pill-list pill-list--compact">
+                    {dueNowSummary.map((label) => (
+                      <span className="pill pill--soft" key={label}>
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                  {(
+                    [
+                      ["overdue", dueNow.overdue],
+                      ["today", dueNow.today],
+                      ["thisWeek", dueNow.thisWeek],
+                    ] as const
+                  ).map(([bucket, steps]) =>
+                    steps.length > 0 ? (
+                      <div className="support-reminder-group" key={bucket}>
+                        <div className="support-reminder-group__header">
+                          <h4>{getSupportReminderLabel(bucket)}</h4>
+                          <span
+                            className={[
+                              "status-chip",
+                              getSupportReminderChipClassName(bucket),
+                            ].join(" ")}
+                          >
+                            {steps.length}
+                          </span>
+                        </div>
+                        <div className="stack-list">
+                          {steps.map((step) => (
+                            <article
+                              className="support-followup-card support-followup-card--urgent"
+                              key={`due-${bucket}-${step.id}`}
+                            >
+                              <div className="thread-card__meta">
+                                <div>
+                                  <p className="feature-label">
+                                    Step {step.position} • {getSupportStepKindLabel(step.kind)}
+                                  </p>
+                                  <h4>{step.title}</h4>
+                                </div>
+                                <span
+                                  className={[
+                                    "status-chip",
+                                    getSupportReminderChipClassName(bucket),
+                                  ].join(" ")}
+                                >
+                                  {step.followUpAt
+                                    ? formatCalendarDate(step.followUpAt)
+                                    : "No date"}
+                                </span>
+                              </div>
+                              <p>{step.note || step.detail}</p>
+                              <div className="support-followup-card__meta">
+                                <span>{formatSupportStepStatus(step.status)}</span>
+                                <Link
+                                  className="text-link"
+                                  href={step.ctaHref}
+                                  rel={isExternalHref(step.ctaHref) ? "noreferrer" : undefined}
+                                  target={isExternalHref(step.ctaHref) ? "_blank" : undefined}
+                                >
+                                  {step.ctaLabel}
+                                </Link>
+                              </div>
+                              <SupportPlanQuickActions
+                                currentFollowUpAt={step.followUpAt}
+                                currentNote={step.note}
+                                currentStatus={step.status}
+                                stepId={step.id}
+                              />
+                            </article>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null,
+                  )}
+                </div>
+              ) : (
+                <div className="empty-state">
+                  <p>
+                    When a step gets a follow-up date inside this week, it will
+                    show up here so nothing urgent gets buried.
+                  </p>
+                </div>
+              )}
+            </article>
+
+            <article className="sub-card">
+              <h3>Waiting on</h3>
                 {waitingOnSteps.length > 0 ? (
                   <div className="stack-list">
                     {waitingOnSteps.map((step) => (

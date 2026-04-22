@@ -1371,6 +1371,21 @@ a {
   border-color: color-mix(in srgb, #ff8c8c 48%, var(--card-soft-border));
 }
 
+.status-chip--due-overdue {
+  background: color-mix(in srgb, #ffb0a5 34%, transparent);
+  border-color: color-mix(in srgb, #ff947f 46%, var(--card-soft-border));
+}
+
+.status-chip--due-today {
+  background: color-mix(in srgb, #ffd27a 28%, transparent);
+  border-color: color-mix(in srgb, #ffd27a 40%, var(--card-soft-border));
+}
+
+.status-chip--due-week {
+  background: color-mix(in srgb, var(--sky) 16%, transparent);
+  border-color: color-mix(in srgb, var(--sky) 28%, var(--card-soft-border));
+}
+
 .text-link {
   align-self: flex-start;
   margin-top: 1.2rem;
@@ -2025,6 +2040,49 @@ a {
   min-height: 2.7rem;
 }
 
+.support-plan-quick-actions {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.support-plan-quick-actions__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.support-plan-quick-actions__button {
+  min-height: 2.45rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid var(--button-secondary-border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease;
+}
+
+.support-plan-quick-actions__button:hover,
+.support-plan-quick-actions__button:focus-visible {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--primary) 26%, var(--button-secondary-border));
+}
+
+.support-plan-quick-actions__button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.support-plan-quick-actions__status {
+  font-size: 0.92rem;
+}
+
 .support-followup-card {
   display: grid;
   gap: 0.85rem;
@@ -2045,6 +2103,10 @@ a {
   line-height: 1.65;
 }
 
+.support-followup-card--urgent {
+  background: color-mix(in srgb, var(--surface) 72%, var(--soft-fill) 28%);
+}
+
 .support-followup-card__meta {
   display: flex;
   align-items: center;
@@ -2053,6 +2115,25 @@ a {
   flex-wrap: wrap;
   color: var(--muted);
   font-size: 0.94rem;
+}
+
+.support-reminder-group {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.support-reminder-group__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.support-reminder-group__header h3,
+.support-reminder-group__header h4,
+.support-reminder-group__header p {
+  margin: 0;
 }
 
 .empty-state {

@@ -503,6 +503,16 @@ function formatStepFollowThrough(step: SupportPlanRecord["steps"][number]) {
   return parts.join(" ");
 }
 
+function toUtcDateKey(value: string | Date) {
+  const date = typeof value === "string" ? new Date(value) : value;
+
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+  )
+    .toISOString()
+    .slice(0, 10);
+}
+
 export function getSupportPlanWaitingOn(plan: SupportPlanRecord) {
   return plan.steps
     .filter((step) => step.status === "contacted")
@@ -518,6 +528,47 @@ export function getSupportPlanUpcomingFollowUps(plan: SupportPlanRecord) {
         step.status !== "attended",
     )
     .sort(sortByFollowUpDate);
+}
+
+export function getSupportPlanDueNow(
+  plan: SupportPlanRecord,
+  referenceDate = new Date(),
+) {
+  const { cycleEnd } = getSupportPlanWindow(referenceDate);
+  const todayKey = toUtcDateKey(referenceDate);
+  const cycleEndKey = cycleEnd.slice(0, 10);
+  const overdue: SupportPlanRecord["steps"] = [];
+  const today: SupportPlanRecord["steps"] = [];
+  const thisWeek: SupportPlanRecord["steps"] = [];
+
+  for (const step of getSupportPlanUpcomingFollowUps(plan)) {
+    if (!step.followUpAt) {
+      continue;
+    }
+
+    const followUpKey = toUtcDateKey(step.followUpAt);
+
+    if (followUpKey < todayKey) {
+      overdue.push(step);
+      continue;
+    }
+
+    if (followUpKey === todayKey) {
+      today.push(step);
+      continue;
+    }
+
+    if (followUpKey <= cycleEndKey) {
+      thisWeek.push(step);
+    }
+  }
+
+  return {
+    overdue,
+    thisWeek,
+    today,
+    totalCount: overdue.length + today.length + thisWeek.length,
+  };
 }
 
 export function getSupportPlanWins(plan: SupportPlanRecord) {
@@ -552,6 +603,43 @@ function buildPreviousPlanMomentum(previousPlan: SupportPlanRecord | null) {
       ]
         .filter(Boolean)
         .join("\n");
+    }),
+    "",
+  ];
+}
+
+function buildDueNowMomentum(plan: SupportPlanRecord) {
+  const dueNow = getSupportPlanDueNow(plan);
+  const urgentSteps = [
+    ...dueNow.overdue,
+    ...dueNow.today,
+    ...dueNow.thisWeek,
+  ];
+
+  if (urgentSteps.length === 0) {
+    return [];
+  }
+
+  const summaryParts = [
+    dueNow.overdue.length > 0
+      ? `${dueNow.overdue.length} overdue`
+      : null,
+    dueNow.today.length > 0
+      ? `${dueNow.today.length} due today`
+      : null,
+    dueNow.thisWeek.length > 0
+      ? `${dueNow.thisWeek.length} due later this week`
+      : null,
+  ].filter((part): part is string => Boolean(part));
+
+  return [
+    `Follow-up focus: ${summaryParts.join(", ")}.`,
+    ...urgentSteps.map((step) => {
+      const followUpLabel = step.followUpAt
+        ? formatCalendarDate(step.followUpAt)
+        : "No follow-up date";
+
+      return `- ${step.title}: ${followUpLabel} (${formatSupportStepStatus(step.status)})`;
     }),
     "",
   ];
@@ -592,6 +680,7 @@ export function buildSupportPlanEmailContent(
       ? `You have already moved ${progress.completedCount} of ${progress.totalCount} steps forward in this plan.`
       : "You have a fresh set of three gentle next steps waiting for you.",
     "",
+    ...buildDueNowMomentum(plan),
     ...buildPreviousPlanMomentum(previousPlan),
     ...stepLines,
     "",

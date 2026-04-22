@@ -77,7 +77,11 @@ import type {
   SupportStepStatus,
   UserRole,
 } from "@/lib/app-types";
-import { formatRole, formatSupportStepStatus } from "@/lib/formatters";
+import {
+  formatCalendarDate,
+  formatRole,
+  formatSupportStepStatus,
+} from "@/lib/formatters";
 import {
   getAppUrl,
   isClerkConfigured,
@@ -113,6 +117,7 @@ const validSupportStepStatuses = new Set<SupportStepStatus>([
   "attended",
   "done",
 ]);
+const validFollowUpShortcuts = new Set(["3-days", "next-week"] as const);
 const passwordResetRequestCooldownMs = 1000 * 60 * 5;
 const validAdminReturnPaths = new Set([
   "/admin-tools/email-lookup",
@@ -139,6 +144,8 @@ export type ToggleSavedResourceActionState = {
   refreshCurrentPage: boolean;
   status: "success" | "error";
 };
+
+type FollowUpShortcut = "3-days" | "next-week";
 
 function buildPath(pathname: string, params: Record<string, string>) {
   const search = new URLSearchParams(params);
@@ -219,6 +226,37 @@ function normalizeFollowUpAt(value: FormDataEntryValue | null) {
   const date = new Date(`${raw}T12:00:00.000Z`);
 
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function pickFollowUpShortcut(value: FormDataEntryValue | null) {
+  const shortcut = String(value ?? "").trim();
+
+  return validFollowUpShortcuts.has(shortcut as FollowUpShortcut)
+    ? (shortcut as FollowUpShortcut)
+    : null;
+}
+
+function buildFollowUpShortcutDate(
+  shortcut: FollowUpShortcut,
+  referenceDate = new Date(),
+) {
+  const nextDate = new Date(
+    Date.UTC(
+      referenceDate.getUTCFullYear(),
+      referenceDate.getUTCMonth(),
+      referenceDate.getUTCDate(),
+      12,
+      0,
+      0,
+      0,
+    ),
+  );
+
+  nextDate.setUTCDate(
+    nextDate.getUTCDate() + (shortcut === "3-days" ? 3 : 7),
+  );
+
+  return nextDate.toISOString();
 }
 
 function buildModerationSubjectKey(targetUserId: string | null, targetAuthor: string) {
@@ -701,9 +739,15 @@ export async function updateSupportPlanStepStatusAction(
 ): Promise<SupportPlanStepActionState> {
   const currentUser = await requireCurrentUser();
   const stepId = String(formData.get("stepId") ?? "").trim();
-  const requestedStatus = String(formData.get("status") ?? "").trim();
+  const currentStatus = String(formData.get("currentStatus") ?? "").trim();
+  const requestedStatus = String(
+    formData.get("status") ?? currentStatus,
+  ).trim();
   const note = String(formData.get("note") ?? "").trim();
-  const followUpAt = normalizeFollowUpAt(formData.get("followUpAt"));
+  const followUpShortcut = pickFollowUpShortcut(formData.get("followUpShortcut"));
+  const followUpAt = followUpShortcut
+    ? buildFollowUpShortcutDate(followUpShortcut)
+    : normalizeFollowUpAt(formData.get("followUpAt"));
 
   if (!stepId || !validSupportStepStatuses.has(requestedStatus as SupportStepStatus)) {
     return {
@@ -741,6 +785,7 @@ export async function updateSupportPlanStepStatusAction(
   const didStatusChange = nextStatus !== step.status;
   const didNoteChange = nextNote !== step.note;
   const didFollowUpChange = (followUpAt ?? null) !== (step.followUpAt ?? null);
+  const nextFollowUpLabel = updatedStep?.followUpAt ?? followUpAt;
 
   revalidatePath("/dashboard");
 
@@ -751,6 +796,8 @@ export async function updateSupportPlanStepStatusAction(
     currentNote: updatedStep?.note ?? nextNote,
     message: didStatusChange
       ? `Step marked ${formatSupportStepStatus(nextStatus).toLowerCase()}.`
+      : didFollowUpChange && nextFollowUpLabel
+        ? `Follow-up moved to ${formatCalendarDate(nextFollowUpLabel)}.`
       : didNoteChange || didFollowUpChange
         ? "Step details saved."
         : "Step saved.",
