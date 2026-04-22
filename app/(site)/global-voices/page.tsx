@@ -13,7 +13,7 @@ import {
 
 export default function GlobalVoicesPage() {
   const creatorAvatarUrl = (handle: string) =>
-    `https://unavatar.io/instagram/${handle.replace(/^@/, "")}`;
+    `/global-voices/creators/${handle.replace(/^@/, "")}.jpg`;
 
   return (
     <div className="page">
@@ -96,12 +96,14 @@ export default function GlobalVoicesPage() {
           {communityCreatorReferences.map((creator) => (
             <article className="feature-card creator-card" key={creator.handle}>
               <div className="creator-card__header">
-                <div
-                  aria-hidden="true"
-                  className="creator-card__avatar"
-                  style={{ backgroundImage: `url(${creatorAvatarUrl(creator.handle)})` }}
-                >
-                  {creator.name.charAt(0)}
+                <div aria-hidden="true" className="creator-card__avatar">
+                  <Image
+                    alt=""
+                    className="creator-card__avatar-image"
+                    height={64}
+                    src={creatorAvatarUrl(creator.handle)}
+                    width={64}
+                  />
                 </div>
                 <div className="creator-card__header-copy">
                   <p className="feature-label">{creator.handle}</p>
