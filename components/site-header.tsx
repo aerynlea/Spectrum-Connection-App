@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { unstable_noStore as noStore } from "next/cache";
 
 import { AppearanceControls } from "@/components/appearance-controls";
 import { BrandMark } from "@/components/brand-mark";
@@ -19,9 +18,10 @@ const navItems = [
 ];
 
 export async function SiteHeader() {
-  noStore();
-  const currentUser = await getCurrentUser();
-  const hasAdminAccess = await hasAdminLookupAccess();
+  const [currentUser, hasAdminAccess] = await Promise.all([
+    getCurrentUser(),
+    hasAdminLookupAccess(),
+  ]);
   const signInHref = isClerkConfigured ? "/sign-in" : "/auth";
 
   return (

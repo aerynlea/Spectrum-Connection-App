@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { unstable_noStore as noStore } from "next/cache";
 
 import {
   lockAdminLookupAction,
@@ -34,8 +33,6 @@ function formatDate(value: string) {
 export default async function EmailLookupPage({
   searchParams,
 }: EmailLookupPageProps) {
-  noStore();
-
   const message = await getQueryMessage(searchParams, "message");
   const error = await getQueryMessage(searchParams, "error");
   const email = normalizeLookupEmail(await getQueryMessage(searchParams, "email"));

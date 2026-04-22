@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { unstable_noStore as noStore } from "next/cache";
 
 import { SectionHeading } from "@/components/section-heading";
 import { StatusBanner } from "@/components/status-banner";
@@ -15,11 +14,11 @@ type EventsPageProps = {
 };
 
 export default async function EventsPage({ searchParams }: EventsPageProps) {
-  noStore();
-
-  const currentUser = await getCurrentUser();
-  const message = await getQueryMessage(searchParams, "message");
-  const events = await listEvents();
+  const [currentUser, message, events] = await Promise.all([
+    getCurrentUser(),
+    getQueryMessage(searchParams, "message"),
+    listEvents(),
+  ]);
   const recommendations = currentUser
     ? buildRecommendations(currentUser, await listResources(currentUser.id), events)
     : null;

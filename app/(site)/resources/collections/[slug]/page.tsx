@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { unstable_noStore as noStore } from "next/cache";
 import { notFound } from "next/navigation";
 
 import { ResourceCard } from "@/components/resources/resource-card";
@@ -20,10 +19,10 @@ type ResourceCollectionPageProps = {
 export default async function ResourceCollectionPage({
   params,
 }: ResourceCollectionPageProps) {
-  noStore();
-
-  const currentUser = await getCurrentUser();
-  const { slug } = await params;
+  const [currentUser, { slug }] = await Promise.all([
+    getCurrentUser(),
+    params,
+  ]);
   const quickStart = getResourceQuickStartBySlug(slug);
 
   if (!quickStart) {

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { unstable_noStore as noStore } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { signInAction, signUpAction } from "@/app/actions";
@@ -17,8 +16,6 @@ type AuthPageProps = {
 };
 
 export default async function AuthPage({ searchParams }: AuthPageProps) {
-  noStore();
-
   const currentUser = await getCurrentUser();
 
   if (currentUser) {

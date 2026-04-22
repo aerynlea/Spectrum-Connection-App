@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { unstable_noStore as noStore } from "next/cache";
 
 import {
   lockAdminLookupAction,
@@ -46,8 +45,6 @@ function countRecentSignups(
 export default async function MemberRosterPage({
   searchParams,
 }: MemberRosterPageProps) {
-  noStore();
-
   const message = await getQueryMessage(searchParams, "message");
   const error = await getQueryMessage(searchParams, "error");
   const isConfigured = isAdminLookupConfigured();

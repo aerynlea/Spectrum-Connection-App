@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { unstable_noStore as noStore } from "next/cache";
 import { notFound } from "next/navigation";
 
 import { ResourceCard } from "@/components/resources/resource-card";
@@ -40,11 +39,11 @@ function containsWholePhrase(text: string, phrase: string) {
 export default async function ResourceDetailPage({
   params,
 }: ResourceDetailPageProps) {
-  noStore();
-
-  const currentUser = await getCurrentUser();
+  const [currentUser, { id }] = await Promise.all([
+    getCurrentUser(),
+    params,
+  ]);
   const resources = await listResources(currentUser?.id);
-  const { id } = await params;
   const resource = getResourceById(resources, id);
 
   if (!resource) {

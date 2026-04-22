@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { unstable_noStore as noStore } from "next/cache";
 
 import { ResourceCard } from "@/components/resources/resource-card";
 import { SectionHeading } from "@/components/section-heading";
@@ -40,8 +39,6 @@ function pickResources(resources: ListedResource[], ids: string[]) {
 }
 
 export default async function CaliforniaGuidePage() {
-  noStore();
-
   const currentUser = await getCurrentUser();
   const resources = await listResources(currentUser?.id);
   const schoolPathResources = pickResources(resources, SCHOOL_PATH_RESOURCE_IDS);

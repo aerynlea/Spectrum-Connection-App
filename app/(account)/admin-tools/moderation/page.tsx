@@ -1,4 +1,3 @@
-import { unstable_noStore as noStore } from "next/cache";
 
 import {
   lockAdminLookupAction,
@@ -632,8 +631,6 @@ async function getTargetState(report: ModerationReportRecord): Promise<Moderatio
 export default async function ModerationPage({
   searchParams,
 }: ModerationPageProps) {
-  noStore();
-
   const message = await getQueryMessage(searchParams, "message");
   const error = await getQueryMessage(searchParams, "error");
   const isConfigured = isAdminLookupConfigured();

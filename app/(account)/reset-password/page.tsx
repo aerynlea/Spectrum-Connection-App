@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { unstable_noStore as noStore } from "next/cache";
 
 import { resetPasswordAction } from "@/app/actions";
 import { SectionHeading } from "@/components/section-heading";
@@ -16,8 +15,6 @@ type ResetPasswordPageProps = {
 export default async function ResetPasswordPage({
   searchParams,
 }: ResetPasswordPageProps) {
-  noStore();
-
   await deleteExpiredPasswordResetTokens();
 
   const message = await getQueryMessage(searchParams, "message");

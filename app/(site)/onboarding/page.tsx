@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { unstable_noStore as noStore } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { OnboardingForm } from "@/components/onboarding-form";
@@ -16,8 +15,6 @@ type OnboardingPageProps = {
 export default async function OnboardingPage({
   searchParams,
 }: OnboardingPageProps) {
-  noStore();
-
   const currentUser = await requireCurrentUser();
   const message = await getQueryMessage(searchParams, "message");
   const error = await getQueryMessage(searchParams, "error");

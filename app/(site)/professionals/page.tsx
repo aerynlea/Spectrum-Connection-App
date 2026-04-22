@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { unstable_noStore as noStore } from "next/cache";
 
 import { ReportConcernForm } from "@/components/report-concern-form";
 import { SectionHeading } from "@/components/section-heading";
@@ -48,11 +47,11 @@ function getVerificationSummary(
 export default async function ProfessionalsPage({
   searchParams,
 }: ProfessionalsPageProps) {
-  noStore();
-
-  const currentUser = await getCurrentUser();
-  const message = await getQueryMessage(searchParams, "message");
-  const professionals = await listProfessionals();
+  const [currentUser, message, professionals] = await Promise.all([
+    getCurrentUser(),
+    getQueryMessage(searchParams, "message"),
+    listProfessionals(),
+  ]);
   const providerSections = partitionByLocation(professionals, currentUser?.location);
   const featuredProfessionals =
     currentUser && providerSections.nearby.length > 0

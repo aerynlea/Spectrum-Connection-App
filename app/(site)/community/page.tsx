@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { unstable_noStore as noStore } from "next/cache";
 
 import {
   createCommunityPostAction,
@@ -29,13 +28,13 @@ function getTrustLabel(authorRole: string) {
 export default async function CommunityPage({
   searchParams,
 }: CommunityPageProps) {
-  noStore();
-
-  const currentUser = await getCurrentUser();
-  const message = await getQueryMessage(searchParams, "message");
-  const error = await getQueryMessage(searchParams, "error");
-  const posts = await listCommunityPosts(12);
-  const replies = await listCommunityReplies();
+  const [currentUser, message, error, posts, replies] = await Promise.all([
+    getCurrentUser(),
+    getQueryMessage(searchParams, "message"),
+    getQueryMessage(searchParams, "error"),
+    listCommunityPosts(12),
+    listCommunityReplies(),
+  ]);
   const repliesByPost = replies.reduce<Map<string, typeof replies>>((groups, reply) => {
     const next = groups.get(reply.postId) ?? [];
     next.push(reply);

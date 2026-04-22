@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { unstable_noStore as noStore } from "next/cache";
 
 import { ResourceCard } from "@/components/resources/resource-card";
 import { SectionHeading } from "@/components/section-heading";
@@ -27,11 +26,11 @@ function pickResources(resources: ListedResource[], ids: string[]) {
 }
 
 export default async function OutingsPage() {
-  noStore();
-
-  const currentUser = await getCurrentUser();
+  const [currentUser, events] = await Promise.all([
+    getCurrentUser(),
+    listEvents(),
+  ]);
   const resources = await listResources(currentUser?.id);
-  const events = await listEvents();
 
   const outingResources = resources.filter(
     (resource) => resource.collectionName === "Theme Parks and Outings",

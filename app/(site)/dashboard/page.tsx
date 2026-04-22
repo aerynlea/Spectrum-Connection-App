@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { unstable_noStore as noStore } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { ProfileForm } from "@/components/profile-form";
@@ -76,20 +75,28 @@ function isExternalHref(href: string) {
 export default async function DashboardPage({
   searchParams,
 }: DashboardPageProps) {
-  noStore();
-
   const currentUser = await requireCurrentUser();
   if (!currentUser.onboardingCompleted) {
     redirect("/onboarding");
   }
 
-  const message = await getQueryMessage(searchParams, "message");
-  const error = await getQueryMessage(searchParams, "error");
-  const resources = await listResources(currentUser.id);
-  const savedResources = await listSavedResources(currentUser.id);
-  const events = await listEvents();
-  const recentPosts = await listCommunityPosts(6);
-  const professionals = await listProfessionals();
+  const [
+    message,
+    error,
+    resources,
+    savedResources,
+    events,
+    recentPosts,
+    professionals,
+  ] = await Promise.all([
+    getQueryMessage(searchParams, "message"),
+    getQueryMessage(searchParams, "error"),
+    listResources(currentUser.id),
+    listSavedResources(currentUser.id),
+    listEvents(),
+    listCommunityPosts(6),
+    listProfessionals(),
+  ]);
   const recommendations = buildRecommendations(currentUser, resources, events);
   const eventSections = partitionByLocation(recommendations.events, currentUser.location);
   const goalRoadmap = buildPremiumRoadmap(currentUser);

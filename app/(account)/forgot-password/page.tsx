@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { unstable_noStore as noStore } from "next/cache";
 
 import { requestPasswordResetAction } from "@/app/actions";
 import { SectionHeading } from "@/components/section-heading";
@@ -19,8 +18,6 @@ type ForgotPasswordPageProps = {
 export default async function ForgotPasswordPage({
   searchParams,
 }: ForgotPasswordPageProps) {
-  noStore();
-
   const message = await getQueryMessage(searchParams, "message");
   const error = await getQueryMessage(searchParams, "error");
   const isEmailResetReady = isPasswordResetEmailConfigured();

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { unstable_noStore as noStore } from "next/cache";
 
 import { ResourceCard } from "@/components/resources/resource-card";
 import { SectionHeading } from "@/components/section-heading";
@@ -77,17 +76,18 @@ function buildFilterLink(
 export default async function ResourcesPage({
   searchParams,
 }: ResourcesPageProps) {
-  noStore();
-
-  const currentUser = await getCurrentUser();
-  const resolvedParams = (await searchParams) ?? {};
-  const message = await getQueryMessage(searchParams, "message");
-  const error = await getQueryMessage(searchParams, "error");
+  const [currentUser, resolvedParams, message, error] = await Promise.all([
+    getCurrentUser(),
+    searchParams,
+    getQueryMessage(searchParams, "message"),
+    getQueryMessage(searchParams, "error"),
+  ]);
+  const safeParams = resolvedParams ?? {};
   const filters = {
-    query: resolvedParams.query ?? "",
-    category: resolvedParams.category ?? "",
-    collection: resolvedParams.collection ?? "",
-    ageGroup: resolvedParams.ageGroup ?? "",
+    query: safeParams.query ?? "",
+    category: safeParams.category ?? "",
+    collection: safeParams.collection ?? "",
+    ageGroup: safeParams.ageGroup ?? "",
   };
   const resources = await listResources(currentUser?.id);
   const filteredResources = getFilteredResources(resources, filters);

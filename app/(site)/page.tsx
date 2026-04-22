@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { unstable_noStore as noStore } from "next/cache";
 
 import { BrandMark } from "@/components/brand-mark";
 import { SectionHeading } from "@/components/section-heading";
@@ -29,13 +28,14 @@ type HomePageProps = {
 };
 
 export default async function HomePage({ searchParams }: HomePageProps) {
-  noStore();
-
-  const currentUser = await getCurrentUser();
-  const message = await getQueryMessage(searchParams, "message");
-  const stats = await getStats();
-  const posts = await listCommunityPosts(3);
-  const events = await listEvents();
+  const currentUserPromise = getCurrentUser();
+  const [currentUser, message, stats, posts, events] = await Promise.all([
+    currentUserPromise,
+    getQueryMessage(searchParams, "message"),
+    getStats(),
+    listCommunityPosts(3),
+    listEvents(),
+  ]);
   const resources = await listResources(currentUser?.id);
   const recommendations = currentUser
     ? buildRecommendations(currentUser, resources, events)
