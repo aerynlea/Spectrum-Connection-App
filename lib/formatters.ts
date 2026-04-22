@@ -3,7 +3,12 @@ import {
   goalOptions,
   roleOptions,
 } from "@/lib/catalog";
-import type { AgeGroup, GoalKey, UserRole } from "@/lib/app-types";
+import type {
+  AgeGroup,
+  GoalKey,
+  SupportStepStatus,
+  UserRole,
+} from "@/lib/app-types";
 
 const roleLabels = new Map(roleOptions.map((option) => [option.value, option.label]));
 const ageLabels = new Map(
@@ -21,6 +26,21 @@ export function formatAgeGroup(ageGroup: AgeGroup) {
 
 export function formatGoal(goal: GoalKey) {
   return goalLabels.get(goal) ?? goal;
+}
+
+export function formatSupportStepStatus(status: SupportStepStatus) {
+  switch (status) {
+    case "saved":
+      return "Saved";
+    case "contacted":
+      return "Contacted";
+    case "attended":
+      return "Attended";
+    case "done":
+      return "Done";
+    default:
+      return "Not started";
+  }
 }
 
 export function formatDateTime(isoDate: string) {

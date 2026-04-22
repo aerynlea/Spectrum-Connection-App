@@ -87,6 +87,36 @@ export async function updateUserMembership(
     : (await getLocal()).updateUserMembership(userId, input);
 }
 
+export async function getLatestSupportPlanForUser(userId: string) {
+  return isNeonConfigured
+    ? (await getHosted()).getLatestSupportPlanForUser(userId)
+    : (await getLocal()).getLatestSupportPlanForUser(userId);
+}
+
+export async function createSupportPlan(
+  userId: string,
+  input: Parameters<LocalModule["createSupportPlan"]>[1],
+) {
+  return isNeonConfigured
+    ? (await getHosted()).createSupportPlan(userId, input)
+    : (await getLocal()).createSupportPlan(userId, input);
+}
+
+export async function updateSupportPlanStepStatus(
+  stepId: string,
+  status: Parameters<LocalModule["updateSupportPlanStepStatus"]>[1],
+) {
+  return isNeonConfigured
+    ? (await getHosted()).updateSupportPlanStepStatus(stepId, status)
+    : (await getLocal()).updateSupportPlanStepStatus(stepId, status);
+}
+
+export async function markSupportPlanRecapSent(planId: string, sentAt?: string) {
+  return isNeonConfigured
+    ? (await getHosted()).markSupportPlanRecapSent(planId, sentAt)
+    : (await getLocal()).markSupportPlanRecapSent(planId, sentAt);
+}
+
 export async function createSession(userId: string, expiresAt: string) {
   return isNeonConfigured
     ? (await getHosted()).createSession(userId, expiresAt)

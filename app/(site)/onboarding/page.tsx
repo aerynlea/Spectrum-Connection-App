@@ -111,13 +111,13 @@ export default async function OnboardingPage({
           <p className="eyebrow">Prefer to explore first?</p>
           <h2>You can still look around before finishing everything.</h2>
           <p>
-            If you want a quick look first, browse support and come back when
-            you are ready.
+            If you want a quick look first, browse resources and come back
+            when you are ready.
           </p>
         </div>
         <div className="button-row">
           <Link className="button-secondary" href="/resources">
-            Browse support
+            Browse resources
           </Link>
           <Link className="button-secondary" href="/community">
             Read community conversations

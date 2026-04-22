@@ -61,6 +61,19 @@ export type GoalKey =
   | "independent-living"
   | "caregiver-wellness";
 
+export type SupportStepKind =
+  | "resource"
+  | "professional"
+  | "event"
+  | "community";
+
+export type SupportStepStatus =
+  | "not-started"
+  | "saved"
+  | "contacted"
+  | "attended"
+  | "done";
+
 export type AppUser = {
   id: string;
   name: string;
@@ -231,4 +244,35 @@ export type RecommendationRecord = ResourceRecord & {
 export type RecommendationBundle = {
   resources: RecommendationRecord[];
   events: EventRecord[];
+};
+
+export type SupportPlanStepRecord = {
+  id: string;
+  planId: string;
+  position: number;
+  kind: SupportStepKind;
+  title: string;
+  detail: string;
+  rationale: string;
+  ctaLabel: string;
+  ctaHref: string;
+  targetId: string | null;
+  targetType: SupportStepKind | null;
+  suggestedStatus: SupportStepStatus;
+  status: SupportStepStatus;
+  statusUpdatedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+};
+
+export type SupportPlanRecord = {
+  id: string;
+  userId: string;
+  cycleStart: string;
+  cycleEnd: string;
+  profileSignature: string;
+  summary: string;
+  generatedAt: string;
+  recapSentAt: string | null;
+  steps: SupportPlanStepRecord[];
 };

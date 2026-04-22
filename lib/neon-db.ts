@@ -25,10 +25,14 @@ import type {
   ModerationReportRecord,
   ModerationReportStatus,
   ModerationTargetType,
-  ProfessionalVerificationStatus,
   ProfessionalRecord,
+  ProfessionalVerificationStatus,
   ResourceRecord,
   SubscriptionStatus,
+  SupportPlanRecord,
+  SupportPlanStepRecord,
+  SupportStepKind,
+  SupportStepStatus,
   UserRole,
 } from "@/lib/app-types";
 
@@ -183,6 +187,36 @@ type StatsRow = {
   saved_count: string | number;
 };
 
+type SupportPlanRow = {
+  id: string;
+  user_id: string;
+  cycle_start: string;
+  cycle_end: string;
+  profile_signature: string;
+  summary: string;
+  generated_at: string;
+  recap_sent_at: string | null;
+};
+
+type SupportPlanStepRow = {
+  id: string;
+  plan_id: string;
+  position: number;
+  kind: SupportStepKind;
+  title: string;
+  detail: string;
+  rationale: string;
+  cta_label: string;
+  cta_href: string;
+  target_id: string | null;
+  target_type: SupportStepKind | null;
+  suggested_status: SupportStepStatus;
+  status: SupportStepStatus;
+  status_updated_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+};
+
 export type CreateUserInput = {
   name: string;
   email: string;
@@ -221,6 +255,25 @@ export type MembershipUpdateInput = {
 
 export type NewsletterSubscriptionUpdateInput = {
   newsletterSubscribed: boolean;
+};
+
+export type CreateSupportPlanInput = {
+  cycleStart: string;
+  cycleEnd: string;
+  profileSignature: string;
+  summary: string;
+  steps: Array<{
+    position: number;
+    kind: SupportStepKind;
+    title: string;
+    detail: string;
+    rationale: string;
+    ctaLabel: string;
+    ctaHref: string;
+    targetId: string | null;
+    targetType: SupportStepKind | null;
+    suggestedStatus: SupportStepStatus;
+  }>;
 };
 
 const globalForNeon = globalThis as typeof globalThis & {
@@ -402,6 +455,84 @@ function toModerationEscalation(
     note: row.note,
     createdAt: row.createdAt,
   };
+}
+
+function toSupportPlanStep(row: SupportPlanStepRow): SupportPlanStepRecord {
+  return {
+    id: row.id,
+    planId: row.plan_id,
+    position: row.position,
+    kind: row.kind,
+    title: row.title,
+    detail: row.detail,
+    rationale: row.rationale,
+    ctaLabel: row.cta_label,
+    ctaHref: row.cta_href,
+    targetId: row.target_id,
+    targetType: row.target_type,
+    suggestedStatus: row.suggested_status,
+    status: row.status,
+    statusUpdatedAt: row.status_updated_at,
+    completedAt: row.completed_at,
+    createdAt: row.created_at,
+  };
+}
+
+async function getSupportPlanById(planId: string) {
+  const sql = getSql();
+  const [row] = (await sql`
+    SELECT
+      id,
+      user_id,
+      cycle_start,
+      cycle_end,
+      profile_signature,
+      summary,
+      generated_at,
+      recap_sent_at
+    FROM support_plans
+    WHERE id = ${planId}
+    LIMIT 1
+  `) as SupportPlanRow[];
+
+  if (!row) {
+    return null;
+  }
+
+  const stepRows = (await sql`
+    SELECT
+      id,
+      plan_id,
+      position,
+      kind,
+      title,
+      detail,
+      rationale,
+      cta_label,
+      cta_href,
+      target_id,
+      target_type,
+      suggested_status,
+      status,
+      status_updated_at,
+      completed_at,
+      created_at
+    FROM support_plan_steps
+    WHERE plan_id = ${planId}
+    ORDER BY position ASC, created_at ASC
+  `) as SupportPlanStepRow[];
+
+  return {
+    id: row.id,
+    userId: row.user_id,
+    cycleStart: row.cycle_start,
+    cycleEnd: row.cycle_end,
+    profileSignature: row.profile_signature,
+    summary: row.summary,
+    generatedAt: row.generated_at,
+    recapSentAt: row.recap_sent_at,
+    steps: stepRows.map((stepRow) => toSupportPlanStep(stepRow)),
+  } satisfies SupportPlanRecord;
 }
 
 async function seedHostedDatabase() {
@@ -742,6 +873,60 @@ async function seedHostedDatabase() {
   await sql.query(`
     CREATE INDEX IF NOT EXISTS moderation_escalations_target_user_idx
     ON moderation_escalations (target_user_id, created_at DESC)
+  `);
+
+  await sql.query(`
+    CREATE TABLE IF NOT EXISTS support_plans (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      cycle_start TEXT NOT NULL,
+      cycle_end TEXT NOT NULL,
+      profile_signature TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      generated_at TEXT NOT NULL,
+      recap_sent_at TEXT
+    )
+  `);
+
+  await sql.query(`
+    CREATE TABLE IF NOT EXISTS support_plan_steps (
+      id TEXT PRIMARY KEY,
+      plan_id TEXT NOT NULL REFERENCES support_plans(id) ON DELETE CASCADE,
+      position INTEGER NOT NULL,
+      kind TEXT NOT NULL,
+      title TEXT NOT NULL,
+      detail TEXT NOT NULL,
+      rationale TEXT NOT NULL,
+      cta_label TEXT NOT NULL,
+      cta_href TEXT NOT NULL,
+      target_id TEXT,
+      target_type TEXT,
+      suggested_status TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'not-started',
+      status_updated_at TEXT,
+      completed_at TEXT,
+      created_at TEXT NOT NULL
+    )
+  `);
+
+  await sql.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS support_plans_user_cycle_signature_idx
+    ON support_plans (user_id, cycle_start, profile_signature)
+  `);
+
+  await sql.query(`
+    CREATE INDEX IF NOT EXISTS support_plans_user_generated_idx
+    ON support_plans (user_id, generated_at DESC)
+  `);
+
+  await sql.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS support_plan_steps_plan_position_idx
+    ON support_plan_steps (plan_id, position)
+  `);
+
+  await sql.query(`
+    CREATE INDEX IF NOT EXISTS support_plan_steps_target_idx
+    ON support_plan_steps (target_type, target_id)
   `);
 
   for (const resource of resourceSeeds) {
@@ -1269,6 +1454,183 @@ export async function updateUserMembership(userId: string, input: MembershipUpda
   `;
 
   return getUserById(userId);
+}
+
+export async function getLatestSupportPlanForUser(userId: string) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  const [row] = (await sql`
+    SELECT
+      id,
+      user_id,
+      cycle_start,
+      cycle_end,
+      profile_signature,
+      summary,
+      generated_at,
+      recap_sent_at
+    FROM support_plans
+    WHERE user_id = ${userId}
+    ORDER BY generated_at DESC, cycle_start DESC
+    LIMIT 1
+  `) as SupportPlanRow[];
+
+  return row ? getSupportPlanById(row.id) : null;
+}
+
+export async function createSupportPlan(userId: string, input: CreateSupportPlanInput) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  const createdAt = new Date().toISOString();
+  const planId = randomUUID();
+
+  const createdRows = (await sql`
+    INSERT INTO support_plans (
+      id,
+      user_id,
+      cycle_start,
+      cycle_end,
+      profile_signature,
+      summary,
+      generated_at,
+      recap_sent_at
+    ) VALUES (
+      ${planId},
+      ${userId},
+      ${input.cycleStart},
+      ${input.cycleEnd},
+      ${input.profileSignature},
+      ${input.summary},
+      ${createdAt},
+      ${null}
+    )
+    ON CONFLICT (user_id, cycle_start, profile_signature) DO NOTHING
+    RETURNING id
+  `) as Array<{ id: string }>;
+
+  const storedPlanId = createdRows[0]?.id ?? (
+    (await sql`
+      SELECT id
+      FROM support_plans
+      WHERE user_id = ${userId}
+        AND cycle_start = ${input.cycleStart}
+        AND profile_signature = ${input.profileSignature}
+      LIMIT 1
+    `) as Array<{ id: string }>
+  )[0]?.id;
+
+  if (!storedPlanId) {
+    return null;
+  }
+
+  if (storedPlanId === planId) {
+    for (const step of input.steps) {
+      await sql`
+        INSERT INTO support_plan_steps (
+          id,
+          plan_id,
+          position,
+          kind,
+          title,
+          detail,
+          rationale,
+          cta_label,
+          cta_href,
+          target_id,
+          target_type,
+          suggested_status,
+          status,
+          status_updated_at,
+          completed_at,
+          created_at
+        ) VALUES (
+          ${randomUUID()},
+          ${storedPlanId},
+          ${step.position},
+          ${step.kind},
+          ${step.title},
+          ${step.detail},
+          ${step.rationale},
+          ${step.ctaLabel},
+          ${step.ctaHref},
+          ${step.targetId},
+          ${step.targetType},
+          ${step.suggestedStatus},
+          ${"not-started"},
+          ${null},
+          ${null},
+          ${createdAt}
+        )
+        ON CONFLICT (plan_id, position) DO NOTHING
+      `;
+    }
+  }
+
+  return getSupportPlanById(storedPlanId);
+}
+
+export async function updateSupportPlanStepStatus(
+  stepId: string,
+  status: SupportStepStatus,
+) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+  const updatedAt = new Date().toISOString();
+
+  await sql`
+    UPDATE support_plan_steps
+    SET
+      status = ${status},
+      status_updated_at = ${updatedAt},
+      completed_at = CASE
+        WHEN ${status} = 'not-started' THEN NULL
+        ELSE COALESCE(completed_at, ${updatedAt})
+      END
+    WHERE id = ${stepId}
+  `;
+
+  const [row] = (await sql`
+    SELECT
+      id,
+      plan_id,
+      position,
+      kind,
+      title,
+      detail,
+      rationale,
+      cta_label,
+      cta_href,
+      target_id,
+      target_type,
+      suggested_status,
+      status,
+      status_updated_at,
+      completed_at,
+      created_at
+    FROM support_plan_steps
+    WHERE id = ${stepId}
+    LIMIT 1
+  `) as SupportPlanStepRow[];
+
+  return row ? toSupportPlanStep(row) : null;
+}
+
+export async function markSupportPlanRecapSent(
+  planId: string,
+  sentAt = new Date().toISOString(),
+) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  await sql`
+    UPDATE support_plans
+    SET recap_sent_at = ${sentAt}
+    WHERE id = ${planId}
+  `;
+
+  return getSupportPlanById(planId);
 }
 
 export async function createSession(userId: string, expiresAt: string) {

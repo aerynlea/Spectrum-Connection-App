@@ -6,10 +6,12 @@ import { ProfileForm } from "@/components/profile-form";
 import { SaveResourceForm } from "@/components/save-resource-form";
 import { SectionHeading } from "@/components/section-heading";
 import { StatusBanner } from "@/components/status-banner";
+import { SupportPlanProgressForm } from "@/components/support-plan-progress-form";
 import { requireCurrentUser } from "@/lib/auth";
 import {
   listCommunityPosts,
   listEvents,
+  listProfessionals,
   listResources,
   listSavedResources,
 } from "@/lib/data";
@@ -19,16 +21,53 @@ import {
   formatGoal,
   formatMonthDay,
   formatRole,
+  formatSupportStepStatus,
 } from "@/lib/formatters";
 import { partitionByLocation } from "@/lib/location";
 import { buildPremiumRoadmap } from "@/lib/membership";
 import { buildRecommendations } from "@/lib/recommendations";
 import { getQueryMessage, type PageSearchParams } from "@/lib/search-params";
+import {
+  ensureCurrentSupportPlanForUser,
+  getSupportPlanProgress,
+} from "@/lib/support-plans";
 import { profileQuotes } from "@/lib/site-data";
 
 type DashboardPageProps = {
   searchParams?: PageSearchParams;
 };
+
+function getSupportStepKindLabel(kind: string) {
+  switch (kind) {
+    case "resource":
+      return "Resource";
+    case "professional":
+      return "Professional";
+    case "event":
+      return "Event";
+    default:
+      return "Community";
+  }
+}
+
+function getSupportStepStatusClassName(status: string) {
+  switch (status) {
+    case "saved":
+      return "support-step-chip--saved";
+    case "contacted":
+      return "support-step-chip--contacted";
+    case "attended":
+      return "support-step-chip--attended";
+    case "done":
+      return "support-step-chip--done";
+    default:
+      return "support-step-chip--not-started";
+  }
+}
+
+function isExternalHref(href: string) {
+  return /^https?:\/\//i.test(href);
+}
 
 export default async function DashboardPage({
   searchParams,
@@ -45,10 +84,29 @@ export default async function DashboardPage({
   const resources = await listResources(currentUser.id);
   const savedResources = await listSavedResources(currentUser.id);
   const events = await listEvents();
-  const recentPosts = await listCommunityPosts(3);
+  const recentPosts = await listCommunityPosts(6);
+  const professionals = await listProfessionals();
   const recommendations = buildRecommendations(currentUser, resources, events);
   const eventSections = partitionByLocation(recommendations.events, currentUser.location);
   const goalRoadmap = buildPremiumRoadmap(currentUser);
+  const supportPlan = await ensureCurrentSupportPlanForUser(currentUser, {
+    communityPosts: recentPosts,
+    events,
+    professionals,
+    resources,
+  });
+  const supportPlanProgress = supportPlan ? getSupportPlanProgress(supportPlan) : null;
+  const supportPlanCycleLabel = supportPlan
+    ? new Intl.DateTimeFormat("en-US", {
+        dateStyle: "medium",
+      }).format(new Date(supportPlan.cycleStart))
+    : null;
+  const supportPlanRecapSentLabel = supportPlan?.recapSentAt
+    ? new Intl.DateTimeFormat("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(new Date(supportPlan.recapSentAt))
+    : null;
 
   return (
     <div className="page">
@@ -85,6 +143,110 @@ export default async function DashboardPage({
           <span>Upcoming events</span>
         </article>
       </section>
+
+      {supportPlan ? (
+        <section className="section split-layout">
+          <div className="section-panel section-panel--accent">
+            <SectionHeading
+              eyebrow="My next 3 steps"
+              intro="Refreshed weekly from your goals, role, age focus, location, and what you have already saved."
+              title="A calmer plan for what to do next."
+            />
+            <div className="stack-list">
+              <article className="sub-card">
+                <p className="feature-label">Week of {supportPlanCycleLabel}</p>
+                <h3>
+                  {supportPlanProgress?.completedCount ?? 0} of{" "}
+                  {supportPlanProgress?.totalCount ?? supportPlan.steps.length} steps moved
+                  forward
+                </h3>
+                <p>{supportPlan.summary}</p>
+                <div className="pill-list pill-list--compact">
+                  <span className="pill pill--soft">Weekly refresh</span>
+                  <span className="pill pill--soft">
+                    {currentUser.newsletterSubscribed
+                      ? "Email recap enabled"
+                      : "Email recap off"}
+                  </span>
+                </div>
+              </article>
+
+              <article className="sub-card">
+                <h3>How this stays personal</h3>
+                <p>
+                  Guiding Light rebuilds this plan around your role, age focus,
+                  location, goals, and saved support so the next step feels
+                  clearer instead of heavier.
+                </p>
+                <p className="meta-copy">
+                  {currentUser.newsletterSubscribed
+                    ? supportPlanRecapSentLabel
+                      ? `This week's recap email was sent ${supportPlanRecapSentLabel}.`
+                      : "Your weekly recap email is enabled and ready for the next scheduled send."
+                    : "Turn on email updates in your profile if you want this weekly plan in your inbox too."}
+                </p>
+                {!currentUser.newsletterSubscribed ? (
+                  <Link className="button-secondary" href="#profile">
+                    Turn on email recaps
+                  </Link>
+                ) : null}
+              </article>
+            </div>
+          </div>
+
+          <div className="section-panel">
+            <SectionHeading
+              eyebrow="This week"
+              intro="Open each recommendation, then mark the kind of progress you made. Saving a resource can update the plan automatically."
+              title="Your next 3 steps."
+            />
+            <div className="stack-list">
+              {supportPlan.steps.map((step) => (
+                <article className="support-plan-card" key={step.id}>
+                  <div className="support-plan-card__header">
+                    <div>
+                      <p className="feature-label">
+                        Step {step.position} • {getSupportStepKindLabel(step.kind)}
+                      </p>
+                      <h3>{step.title}</h3>
+                    </div>
+                    <span
+                      className={[
+                        "status-chip",
+                        "support-step-chip",
+                        getSupportStepStatusClassName(step.status),
+                      ].join(" ")}
+                    >
+                      {formatSupportStepStatus(step.status)}
+                    </span>
+                  </div>
+                  <p>{step.detail}</p>
+                  <p className="meta-copy">{step.rationale}</p>
+                  <div className="support-plan-card__footer">
+                    <Link
+                      className="button-secondary"
+                      href={step.ctaHref}
+                      rel={isExternalHref(step.ctaHref) ? "noreferrer" : undefined}
+                      target={isExternalHref(step.ctaHref) ? "_blank" : undefined}
+                    >
+                      {step.ctaLabel}
+                    </Link>
+                    <p className="support-plan-card__suggestion">
+                      Suggested finish:{" "}
+                      <strong>{formatSupportStepStatus(step.suggestedStatus)}</strong>
+                    </p>
+                  </div>
+                  <SupportPlanProgressForm
+                    currentStatus={step.status}
+                    stepId={step.id}
+                    suggestedStatus={step.suggestedStatus}
+                  />
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section className="section split-layout">
         <div className="section-panel section-panel--accent">
@@ -136,7 +298,7 @@ export default async function DashboardPage({
         </div>
       </section>
 
-      <section className="section split-layout">
+      <section className="section split-layout" id="profile">
         <div className="section-panel">
           <SectionHeading
             eyebrow="Your profile"
@@ -360,7 +522,7 @@ export default async function DashboardPage({
           title="Support happening in the community today."
         />
         <div className="card-grid card-grid--three">
-          {recentPosts.map((post) => (
+          {recentPosts.slice(0, 3).map((post) => (
             <article className="feature-card" key={post.id}>
               <p className="feature-label">{post.topic}</p>
               <h3>{post.title}</h3>

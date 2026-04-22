@@ -61,6 +61,8 @@ The local app runs at `http://localhost:3000`.
 - `RESEND_API_KEY`
 - `EMAIL_FROM`
 - `EMAIL_REPLY_TO` (optional)
+- `NEWSLETTER_POSTAL_ADDRESS`
+- `CRON_SECRET`
 - `ADMIN_LOOKUP_KEY` (optional, for the private email lookup tool)
 
 If Clerk keys are missing, the app uses the built-in local auth flow. If Stripe values are missing, the membership page stays visible but checkout is disabled gracefully.
@@ -127,6 +129,25 @@ The premium membership flow currently includes:
 - saved premium membership state in the app database
 - dashboard membership status and premium roadmap UI
 
+## Weekly support recaps
+
+Guiding Light now builds a personalized `My Next 3 Steps` plan for each onboarded
+member based on their role, age focus, goals, location, and saved resources.
+
+- The dashboard refreshes this plan weekly.
+- Members can mark steps as `saved`, `contacted`, `attended`, or `done`.
+- Subscribed members can receive the current weekly plan by email.
+
+The scheduled recap route is:
+
+```text
+/api/cron/weekly-recap
+```
+
+In production, set `CRON_SECRET` so Vercel can authorize the cron request securely.
+The included `vercel.json` schedules the recap route to run weekly on Mondays at
+`16:00 UTC`.
+
 ## Verification
 
 Run:
@@ -137,4 +158,3 @@ npm run build
 ```
 
 If you are working in a dirty local workspace, existing unrelated local edits may need to be resolved before full-project lint and build pass cleanly.
-

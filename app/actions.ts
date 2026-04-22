@@ -50,6 +50,7 @@ import {
   setProfessionalHidden,
   toggleSavedResource,
   upsertModerationMemberNote,
+  updateSupportPlanStepStatus,
   updateModerationReport,
   updateProfessionalVerification,
   updateUserPassword,
@@ -72,14 +73,16 @@ import type {
   GoalKey,
   ModerationTargetType,
   ProfessionalVerificationStatus,
+  SupportStepStatus,
   UserRole,
 } from "@/lib/app-types";
-import { formatRole } from "@/lib/formatters";
+import { formatRole, formatSupportStepStatus } from "@/lib/formatters";
 import {
   getAppUrl,
   isClerkConfigured,
   isLocalDevelopment,
 } from "@/lib/platform";
+import { ensureCurrentSupportPlanForUser } from "@/lib/support-plans";
 import { reportReasonOptions } from "@/lib/site-data";
 import { stripe, getStripePriceId, getStripeReturnUrl } from "@/lib/stripe";
 
@@ -99,6 +102,13 @@ const validProfessionalVerificationStatuses =
     "community-shared",
   ]);
 const validReportReasons = new Set<string>(reportReasonOptions);
+const validSupportStepStatuses = new Set<SupportStepStatus>([
+  "not-started",
+  "saved",
+  "contacted",
+  "attended",
+  "done",
+]);
 const passwordResetRequestCooldownMs = 1000 * 60 * 5;
 const validAdminReturnPaths = new Set([
   "/admin-tools/email-lookup",
@@ -109,6 +119,12 @@ const validAdminReturnPaths = new Set([
 export type ProfileActionState = {
   status: "idle" | "success" | "error";
   message: string | null;
+};
+
+export type SupportPlanStepActionState = {
+  status: "idle" | "success" | "error";
+  message: string | null;
+  currentStatus: SupportStepStatus | null;
 };
 
 function buildPath(pathname: string, params: Record<string, string>) {
@@ -644,6 +660,49 @@ export async function completeOnboardingAction(formData: FormData) {
   );
 }
 
+export async function updateSupportPlanStepStatusAction(
+  _previousState: SupportPlanStepActionState,
+  formData: FormData,
+): Promise<SupportPlanStepActionState> {
+  const currentUser = await requireCurrentUser();
+  const stepId = String(formData.get("stepId") ?? "").trim();
+  const requestedStatus = String(formData.get("status") ?? "").trim();
+
+  if (!stepId || !validSupportStepStatuses.has(requestedStatus as SupportStepStatus)) {
+    return {
+      status: "error",
+      message: "That step update did not go through.",
+      currentStatus: null,
+    };
+  }
+
+  const plan = await ensureCurrentSupportPlanForUser(currentUser);
+  const step = plan?.steps.find((item) => item.id === stepId);
+
+  if (!plan || !step) {
+    return {
+      status: "error",
+      message: "We could not find that step in your current weekly plan.",
+      currentStatus: null,
+    };
+  }
+
+  const updatedStep = await updateSupportPlanStepStatus(
+    step.id,
+    requestedStatus as SupportStepStatus,
+  );
+
+  revalidatePath("/dashboard");
+
+  return {
+    status: "success",
+    message: `Step marked ${formatSupportStepStatus(
+      requestedStatus as SupportStepStatus,
+    ).toLowerCase()}.`,
+    currentStatus: updatedStep?.status ?? (requestedStatus as SupportStepStatus),
+  };
+}
+
 export async function sendNewsletterAction(formData: FormData) {
   const hasAccess = await hasAdminLookupAccess();
 
@@ -746,7 +805,22 @@ export async function toggleSavedResourceAction(formData: FormData) {
     redirect(returnTo);
   }
 
-  await toggleSavedResource(currentUser.id, resourceId);
+  const wasSaved = await toggleSavedResource(currentUser.id, resourceId);
+
+  if (wasSaved) {
+    const currentPlan = await ensureCurrentSupportPlanForUser(currentUser);
+    const matchingStep = currentPlan?.steps.find(
+      (step) =>
+        step.targetType === "resource" &&
+        step.targetId === resourceId &&
+        step.status === "not-started",
+    );
+
+    if (matchingStep) {
+      await updateSupportPlanStepStatus(matchingStep.id, "saved");
+    }
+  }
+
   revalidateAppShell();
   redirect(returnTo);
 }

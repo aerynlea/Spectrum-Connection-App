@@ -11,10 +11,12 @@ import {
 } from "@/lib/catalog";
 import type {
   AppUser,
+  AgeGroup,
   AuthProvider,
   CommunityPostRecord,
   CommunityReplyRecord,
   EventRecord,
+  GoalKey,
   MembershipTier,
   MemberRosterRecord,
   ModerationActionTaken,
@@ -24,13 +26,15 @@ import type {
   ModerationReportRecord,
   ModerationReportStatus,
   ModerationTargetType,
-  ProfessionalVerificationStatus,
   ProfessionalRecord,
+  ProfessionalVerificationStatus,
   ResourceRecord,
   SubscriptionStatus,
+  SupportPlanRecord,
+  SupportPlanStepRecord,
+  SupportStepKind,
+  SupportStepStatus,
   UserRole,
-  AgeGroup,
-  GoalKey,
 } from "@/lib/app-types";
 
 type UserRow = {
@@ -197,6 +201,36 @@ type StatsRow = {
   saved_count: number;
 };
 
+type SupportPlanRow = {
+  id: string;
+  user_id: string;
+  cycle_start: string;
+  cycle_end: string;
+  profile_signature: string;
+  summary: string;
+  generated_at: string;
+  recap_sent_at: string | null;
+};
+
+type SupportPlanStepRow = {
+  id: string;
+  plan_id: string;
+  position: number;
+  kind: SupportStepKind;
+  title: string;
+  detail: string;
+  rationale: string;
+  cta_label: string;
+  cta_href: string;
+  target_id: string | null;
+  target_type: SupportStepKind | null;
+  suggested_status: SupportStepStatus;
+  status: SupportStepStatus;
+  status_updated_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+};
+
 export type CreateUserInput = {
   name: string;
   email: string;
@@ -237,11 +271,30 @@ export type NewsletterSubscriptionUpdateInput = {
   newsletterSubscribed: boolean;
 };
 
+export type CreateSupportPlanInput = {
+  cycleStart: string;
+  cycleEnd: string;
+  profileSignature: string;
+  summary: string;
+  steps: Array<{
+    position: number;
+    kind: SupportStepKind;
+    title: string;
+    detail: string;
+    rationale: string;
+    ctaLabel: string;
+    ctaHref: string;
+    targetId: string | null;
+    targetType: SupportStepKind | null;
+    suggestedStatus: SupportStepStatus;
+  }>;
+};
+
 const dataDirectory = process.env.VERCEL
   ? join("/tmp", "guiding-light-data")
   : join(process.cwd(), "data");
 const databasePath = join(dataDirectory, "guiding-light.db");
-const schemaVersion = "2026-04-newsletter-roster";
+const schemaVersion = "2026-04-support-plans";
 
 const globalForDatabase = globalThis as typeof globalThis & {
   guidingLightDb?: DatabaseSync;
@@ -430,6 +483,38 @@ function getDatabase() {
       reason TEXT NOT NULL DEFAULT '',
       note TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS support_plans (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      cycle_start TEXT NOT NULL,
+      cycle_end TEXT NOT NULL,
+      profile_signature TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      generated_at TEXT NOT NULL,
+      recap_sent_at TEXT,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS support_plan_steps (
+      id TEXT PRIMARY KEY,
+      plan_id TEXT NOT NULL,
+      position INTEGER NOT NULL,
+      kind TEXT NOT NULL,
+      title TEXT NOT NULL,
+      detail TEXT NOT NULL,
+      rationale TEXT NOT NULL,
+      cta_label TEXT NOT NULL,
+      cta_href TEXT NOT NULL,
+      target_id TEXT,
+      target_type TEXT,
+      suggested_status TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'not-started',
+      status_updated_at TEXT,
+      completed_at TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (plan_id) REFERENCES support_plans(id) ON DELETE CASCADE
     );
   `);
 
@@ -718,6 +803,62 @@ function ensureContentColumns(database: DatabaseSync) {
     CREATE INDEX IF NOT EXISTS moderation_escalations_target_user_idx
     ON moderation_escalations (target_user_id, created_at DESC)
   `);
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS support_plans (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      cycle_start TEXT NOT NULL,
+      cycle_end TEXT NOT NULL,
+      profile_signature TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      generated_at TEXT NOT NULL,
+      recap_sent_at TEXT,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS support_plan_steps (
+      id TEXT PRIMARY KEY,
+      plan_id TEXT NOT NULL,
+      position INTEGER NOT NULL,
+      kind TEXT NOT NULL,
+      title TEXT NOT NULL,
+      detail TEXT NOT NULL,
+      rationale TEXT NOT NULL,
+      cta_label TEXT NOT NULL,
+      cta_href TEXT NOT NULL,
+      target_id TEXT,
+      target_type TEXT,
+      suggested_status TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'not-started',
+      status_updated_at TEXT,
+      completed_at TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (plan_id) REFERENCES support_plans(id) ON DELETE CASCADE
+    )
+  `);
+
+  database.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS support_plans_user_cycle_signature_idx
+    ON support_plans (user_id, cycle_start, profile_signature)
+  `);
+
+  database.exec(`
+    CREATE INDEX IF NOT EXISTS support_plans_user_generated_idx
+    ON support_plans (user_id, generated_at DESC)
+  `);
+
+  database.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS support_plan_steps_plan_position_idx
+    ON support_plan_steps (plan_id, position)
+  `);
+
+  database.exec(`
+    CREATE INDEX IF NOT EXISTS support_plan_steps_target_idx
+    ON support_plan_steps (target_type, target_id)
+  `);
 }
 
 function parseJson<T>(value: string | null | undefined, fallback: T): T {
@@ -896,6 +1037,86 @@ function toModerationEscalation(
     note: row.note,
     createdAt: row.created_at,
   };
+}
+
+function toSupportPlanStep(row: SupportPlanStepRow): SupportPlanStepRecord {
+  return {
+    id: row.id,
+    planId: row.plan_id,
+    position: row.position,
+    kind: row.kind,
+    title: row.title,
+    detail: row.detail,
+    rationale: row.rationale,
+    ctaLabel: row.cta_label,
+    ctaHref: row.cta_href,
+    targetId: row.target_id,
+    targetType: row.target_type,
+    suggestedStatus: row.suggested_status,
+    status: row.status,
+    statusUpdatedAt: row.status_updated_at,
+    completedAt: row.completed_at,
+    createdAt: row.created_at,
+  };
+}
+
+function getSupportPlanById(planId: string) {
+  const row = database()
+    .prepare(`
+      SELECT
+        id,
+        user_id,
+        cycle_start,
+        cycle_end,
+        profile_signature,
+        summary,
+        generated_at,
+        recap_sent_at
+      FROM support_plans
+      WHERE id = ?
+    `)
+    .get(planId) as SupportPlanRow | undefined;
+
+  if (!row) {
+    return null;
+  }
+
+  const stepRows = database()
+    .prepare(`
+      SELECT
+        id,
+        plan_id,
+        position,
+        kind,
+        title,
+        detail,
+        rationale,
+        cta_label,
+        cta_href,
+        target_id,
+        target_type,
+        suggested_status,
+        status,
+        status_updated_at,
+        completed_at,
+        created_at
+      FROM support_plan_steps
+      WHERE plan_id = ?
+      ORDER BY position ASC, created_at ASC
+    `)
+    .all(planId) as SupportPlanStepRow[];
+
+  return {
+    id: row.id,
+    userId: row.user_id,
+    cycleStart: row.cycle_start,
+    cycleEnd: row.cycle_end,
+    profileSignature: row.profile_signature,
+    summary: row.summary,
+    generatedAt: row.generated_at,
+    recapSentAt: row.recap_sent_at,
+    steps: stepRows.map((stepRow) => toSupportPlanStep(stepRow)),
+  } satisfies SupportPlanRecord;
 }
 
 function seedDatabase(database: DatabaseSync) {
@@ -1354,6 +1575,171 @@ export function updateUserMembership(userId: string, input: MembershipUpdateInpu
   );
 
   return getUserById(userId);
+}
+
+export function getLatestSupportPlanForUser(userId: string) {
+  const row = database()
+    .prepare(`
+      SELECT
+        id,
+        user_id,
+        cycle_start,
+        cycle_end,
+        profile_signature,
+        summary,
+        generated_at,
+        recap_sent_at
+      FROM support_plans
+      WHERE user_id = ?
+      ORDER BY generated_at DESC, cycle_start DESC
+      LIMIT 1
+    `)
+    .get(userId) as SupportPlanRow | undefined;
+
+  return row ? getSupportPlanById(row.id) : null;
+}
+
+export function createSupportPlan(userId: string, input: CreateSupportPlanInput) {
+  const createdAt = new Date().toISOString();
+  const planId = randomUUID();
+
+  database().prepare(`
+    INSERT OR IGNORE INTO support_plans (
+      id,
+      user_id,
+      cycle_start,
+      cycle_end,
+      profile_signature,
+      summary,
+      generated_at,
+      recap_sent_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    planId,
+    userId,
+    input.cycleStart,
+    input.cycleEnd,
+    input.profileSignature,
+    input.summary,
+    createdAt,
+    null,
+  );
+
+  const storedPlan = database()
+    .prepare(`
+      SELECT id
+      FROM support_plans
+      WHERE user_id = ? AND cycle_start = ? AND profile_signature = ?
+      LIMIT 1
+    `)
+    .get(userId, input.cycleStart, input.profileSignature) as
+    | { id: string }
+    | undefined;
+
+  if (!storedPlan) {
+    return null;
+  }
+
+  if (storedPlan.id === planId) {
+    const insertStep = database().prepare(`
+      INSERT OR IGNORE INTO support_plan_steps (
+        id,
+        plan_id,
+        position,
+        kind,
+        title,
+        detail,
+        rationale,
+        cta_label,
+        cta_href,
+        target_id,
+        target_type,
+        suggested_status,
+        status,
+        status_updated_at,
+        completed_at,
+        created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const step of input.steps) {
+      insertStep.run(
+        randomUUID(),
+        storedPlan.id,
+        step.position,
+        step.kind,
+        step.title,
+        step.detail,
+        step.rationale,
+        step.ctaLabel,
+        step.ctaHref,
+        step.targetId,
+        step.targetType,
+        step.suggestedStatus,
+        "not-started",
+        null,
+        null,
+        createdAt,
+      );
+    }
+  }
+
+  return getSupportPlanById(storedPlan.id);
+}
+
+export function updateSupportPlanStepStatus(
+  stepId: string,
+  status: SupportStepStatus,
+) {
+  const updatedAt = new Date().toISOString();
+
+  database().prepare(`
+    UPDATE support_plan_steps
+    SET
+      status = ?,
+      status_updated_at = ?,
+      completed_at = CASE
+        WHEN ? = 'not-started' THEN NULL
+        ELSE COALESCE(completed_at, ?)
+      END
+    WHERE id = ?
+  `).run(status, updatedAt, status, updatedAt, stepId);
+
+  const row = database()
+    .prepare(`
+      SELECT
+        id,
+        plan_id,
+        position,
+        kind,
+        title,
+        detail,
+        rationale,
+        cta_label,
+        cta_href,
+        target_id,
+        target_type,
+        suggested_status,
+        status,
+        status_updated_at,
+        completed_at,
+        created_at
+      FROM support_plan_steps
+      WHERE id = ?
+    `)
+    .get(stepId) as SupportPlanStepRow | undefined;
+
+  return row ? toSupportPlanStep(row) : null;
+}
+
+export function markSupportPlanRecapSent(planId: string, sentAt = new Date().toISOString()) {
+  database().prepare(`
+    UPDATE support_plans
+    SET recap_sent_at = ?
+    WHERE id = ?
+  `).run(sentAt, planId);
+
+  return getSupportPlanById(planId);
 }
 
 export function createSession(userId: string, expiresAt: string) {
