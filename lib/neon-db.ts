@@ -212,6 +212,8 @@ type SupportPlanStepRow = {
   target_type: SupportStepKind | null;
   suggested_status: SupportStepStatus;
   status: SupportStepStatus;
+  note: string;
+  follow_up_at: string | null;
   status_updated_at: string | null;
   completed_at: string | null;
   created_at: string;
@@ -274,6 +276,12 @@ export type CreateSupportPlanInput = {
     targetType: SupportStepKind | null;
     suggestedStatus: SupportStepStatus;
   }>;
+};
+
+export type UpdateSupportPlanStepInput = {
+  followUpAt?: string | null;
+  note?: string;
+  status: SupportStepStatus;
 };
 
 const globalForNeon = globalThis as typeof globalThis & {
@@ -472,6 +480,8 @@ function toSupportPlanStep(row: SupportPlanStepRow): SupportPlanStepRecord {
     targetType: row.target_type,
     suggestedStatus: row.suggested_status,
     status: row.status,
+    note: row.note,
+    followUpAt: row.follow_up_at,
     statusUpdatedAt: row.status_updated_at,
     completedAt: row.completed_at,
     createdAt: row.created_at,
@@ -514,6 +524,8 @@ async function getSupportPlanById(planId: string) {
       target_type,
       suggested_status,
       status,
+      note,
+      follow_up_at,
       status_updated_at,
       completed_at,
       created_at
@@ -903,10 +915,22 @@ async function seedHostedDatabase() {
       target_type TEXT,
       suggested_status TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'not-started',
+      note TEXT NOT NULL DEFAULT '',
+      follow_up_at TEXT,
       status_updated_at TEXT,
       completed_at TEXT,
       created_at TEXT NOT NULL
     )
+  `);
+
+  await sql.query(`
+    ALTER TABLE support_plan_steps
+    ADD COLUMN IF NOT EXISTS note TEXT NOT NULL DEFAULT ''
+  `);
+
+  await sql.query(`
+    ALTER TABLE support_plan_steps
+    ADD COLUMN IF NOT EXISTS follow_up_at TEXT
   `);
 
   await sql.query(`
@@ -1479,6 +1503,31 @@ export async function getLatestSupportPlanForUser(userId: string) {
   return row ? getSupportPlanById(row.id) : null;
 }
 
+export async function listSupportPlansForUser(userId: string, limit = 2) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  const rows = (await sql`
+    SELECT
+      id,
+      user_id,
+      cycle_start,
+      cycle_end,
+      profile_signature,
+      summary,
+      generated_at,
+      recap_sent_at
+    FROM support_plans
+    WHERE user_id = ${userId}
+    ORDER BY generated_at DESC, cycle_start DESC
+    LIMIT ${limit}
+  `) as SupportPlanRow[];
+
+  const plans = await Promise.all(rows.map((row) => getSupportPlanById(row.id)));
+
+  return plans.filter((plan): plan is SupportPlanRecord => Boolean(plan));
+}
+
 export async function createSupportPlan(userId: string, input: CreateSupportPlanInput) {
   await ensureHostedDatabase();
   const sql = getSql();
@@ -1542,6 +1591,8 @@ export async function createSupportPlan(userId: string, input: CreateSupportPlan
           target_type,
           suggested_status,
           status,
+          note,
+          follow_up_at,
           status_updated_at,
           completed_at,
           created_at
@@ -1559,6 +1610,8 @@ export async function createSupportPlan(userId: string, input: CreateSupportPlan
           ${step.targetType},
           ${step.suggestedStatus},
           ${"not-started"},
+          ${""},
+          ${null},
           ${null},
           ${null},
           ${createdAt}
@@ -1573,19 +1626,32 @@ export async function createSupportPlan(userId: string, input: CreateSupportPlan
 
 export async function updateSupportPlanStepStatus(
   stepId: string,
-  status: SupportStepStatus,
+  input: UpdateSupportPlanStepInput,
 ) {
   await ensureHostedDatabase();
   const sql = getSql();
   const updatedAt = new Date().toISOString();
+  const shouldUpdateNote = Object.prototype.hasOwnProperty.call(input, "note");
+  const shouldUpdateFollowUpAt = Object.prototype.hasOwnProperty.call(
+    input,
+    "followUpAt",
+  );
 
   await sql`
     UPDATE support_plan_steps
     SET
-      status = ${status},
+      status = ${input.status},
+      note = CASE
+        WHEN ${shouldUpdateNote} THEN ${input.note?.trim() ?? ""}
+        ELSE note
+      END,
+      follow_up_at = CASE
+        WHEN ${shouldUpdateFollowUpAt} THEN ${input.followUpAt ?? null}
+        ELSE follow_up_at
+      END,
       status_updated_at = ${updatedAt},
       completed_at = CASE
-        WHEN ${status} = 'not-started' THEN NULL
+        WHEN ${input.status} = 'not-started' THEN NULL
         ELSE COALESCE(completed_at, ${updatedAt})
       END
     WHERE id = ${stepId}
@@ -1606,6 +1672,8 @@ export async function updateSupportPlanStepStatus(
       target_type,
       suggested_status,
       status,
+      note,
+      follow_up_at,
       status_updated_at,
       completed_at,
       created_at

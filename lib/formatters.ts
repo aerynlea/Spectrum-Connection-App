@@ -50,6 +50,12 @@ export function formatDateTime(isoDate: string) {
   }).format(new Date(isoDate));
 }
 
+export function formatCalendarDate(isoDate: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+  }).format(new Date(isoDate));
+}
+
 export function formatMonthDay(isoDate: string) {
   const date = new Date(isoDate);
 

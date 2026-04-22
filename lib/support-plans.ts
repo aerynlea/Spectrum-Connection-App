@@ -15,10 +15,12 @@ import {
   listEvents,
   listProfessionals,
   listResources,
+  listSupportPlansForUser,
   markSupportPlanRecapSent,
 } from "@/lib/data";
 import { sendNewsletterEmail } from "@/lib/email";
 import {
+  formatCalendarDate,
   formatDateTime,
   formatGoal,
   formatSupportStepStatus,
@@ -471,7 +473,95 @@ export function getSupportPlanProgress(plan: SupportPlanRecord) {
   };
 }
 
-export function buildSupportPlanEmailContent(user: AppUser, plan: SupportPlanRecord) {
+function sortByFollowUpDate(left: { followUpAt: string | null }, right: { followUpAt: string | null }) {
+  if (left.followUpAt && right.followUpAt) {
+    return left.followUpAt.localeCompare(right.followUpAt);
+  }
+
+  if (left.followUpAt) {
+    return -1;
+  }
+
+  if (right.followUpAt) {
+    return 1;
+  }
+
+  return 0;
+}
+
+function formatStepFollowThrough(step: SupportPlanRecord["steps"][number]) {
+  const parts: string[] = [];
+
+  if (step.note.trim()) {
+    parts.push(`Note: ${step.note.trim()}`);
+  }
+
+  if (step.followUpAt) {
+    parts.push(`Follow up: ${formatCalendarDate(step.followUpAt)}`);
+  }
+
+  return parts.join(" ");
+}
+
+export function getSupportPlanWaitingOn(plan: SupportPlanRecord) {
+  return plan.steps
+    .filter((step) => step.status === "contacted")
+    .sort(sortByFollowUpDate);
+}
+
+export function getSupportPlanUpcomingFollowUps(plan: SupportPlanRecord) {
+  return plan.steps
+    .filter(
+      (step) =>
+        Boolean(step.followUpAt) &&
+        step.status !== "done" &&
+        step.status !== "attended",
+    )
+    .sort(sortByFollowUpDate);
+}
+
+export function getSupportPlanWins(plan: SupportPlanRecord) {
+  return plan.steps.filter((step) =>
+    step.status === "saved" ||
+    step.status === "attended" ||
+    step.status === "done",
+  );
+}
+
+function buildPreviousPlanMomentum(previousPlan: SupportPlanRecord | null) {
+  if (!previousPlan) {
+    return [];
+  }
+
+  const movedForward = getSupportPlanWins(previousPlan);
+
+  if (movedForward.length === 0) {
+    return [];
+  }
+
+  return [
+    `Wins from last week: ${movedForward.length} step${
+      movedForward.length === 1 ? "" : "s"
+    } moved forward.`,
+    ...movedForward.map((step) => {
+      const followThrough = formatStepFollowThrough(step);
+
+      return [
+        `- ${step.title} (${formatSupportStepStatus(step.status)})`,
+        followThrough ? `  ${followThrough}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
+    }),
+    "",
+  ];
+}
+
+export function buildSupportPlanEmailContent(
+  user: AppUser,
+  plan: SupportPlanRecord,
+  previousPlan: SupportPlanRecord | null = null,
+) {
   const progress = getSupportPlanProgress(plan);
   const stepLines = plan.steps.map((step, index) => {
     const lines = [
@@ -486,6 +576,12 @@ export function buildSupportPlanEmailContent(user: AppUser, plan: SupportPlanRec
       lines.splice(2, 0, `Why this is showing up: ${step.rationale}`);
     }
 
+    const followThrough = formatStepFollowThrough(step);
+
+    if (followThrough) {
+      lines.splice(lines.length - 1, 0, followThrough);
+    }
+
     return lines.join("\n");
   });
 
@@ -496,6 +592,7 @@ export function buildSupportPlanEmailContent(user: AppUser, plan: SupportPlanRec
       ? `You have already moved ${progress.completedCount} of ${progress.totalCount} steps forward in this plan.`
       : "You have a fresh set of three gentle next steps waiting for you.",
     "",
+    ...buildPreviousPlanMomentum(previousPlan),
     ...stepLines,
     "",
     `Dashboard: ${toAbsoluteHref("/dashboard")}`,
@@ -516,7 +613,10 @@ export async function sendSupportPlanRecapEmail(user: AppUser, plan: SupportPlan
     return false;
   }
 
-  const { body, subject } = buildSupportPlanEmailContent(user, plan);
+  const previousPlan = (await listSupportPlansForUser(user.id, 2)).find(
+    (candidate) => candidate.id !== plan.id,
+  ) ?? null;
+  const { body, subject } = buildSupportPlanEmailContent(user, plan, previousPlan);
   const delivered = await sendNewsletterEmail({
     name: user.name,
     to: user.email,

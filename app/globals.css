@@ -1962,6 +1962,15 @@ a {
   gap: 0.85rem;
 }
 
+.support-step-status-grid {
+  grid-template-columns: minmax(0, 1.5fr) minmax(12rem, 0.7fr);
+}
+
+.support-step-details-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .support-step-status-row {
   display: flex;
   flex-wrap: wrap;
@@ -2005,6 +2014,40 @@ a {
 .support-step-status-button:disabled {
   cursor: wait;
   opacity: 0.72;
+}
+
+.support-step-details-button {
+  min-height: 2.7rem;
+}
+
+.support-followup-card {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem 1.05rem;
+  border: 1px solid var(--card-soft-border);
+  border-radius: 20px;
+  background: var(--button-secondary-bg);
+}
+
+.support-followup-card h4,
+.support-followup-card h3,
+.support-followup-card p {
+  margin: 0;
+}
+
+.support-followup-card p {
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.support-followup-card__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 0.94rem;
 }
 
 .empty-state {
@@ -2065,6 +2108,7 @@ a {
   .thread-card__meta,
   .support-plan-card__header,
   .support-plan-card__footer,
+  .support-followup-card__meta,
   .resource-meta,
   .stack-row {
     align-items: flex-start;

@@ -17,6 +17,7 @@ import {
 } from "@/lib/data";
 import {
   formatAgeGroup,
+  formatCalendarDate,
   formatDateTime,
   formatGoal,
   formatMonthDay,
@@ -29,7 +30,10 @@ import { buildRecommendations } from "@/lib/recommendations";
 import { getQueryMessage, type PageSearchParams } from "@/lib/search-params";
 import {
   ensureCurrentSupportPlanForUser,
+  getSupportPlanUpcomingFollowUps,
   getSupportPlanProgress,
+  getSupportPlanWaitingOn,
+  getSupportPlanWins,
 } from "@/lib/support-plans";
 import { profileQuotes } from "@/lib/site-data";
 
@@ -107,6 +111,9 @@ export default async function DashboardPage({
         timeStyle: "short",
       }).format(new Date(supportPlan.recapSentAt))
     : null;
+  const waitingOnSteps = supportPlan ? getSupportPlanWaitingOn(supportPlan) : [];
+  const upcomingFollowUps = supportPlan ? getSupportPlanUpcomingFollowUps(supportPlan) : [];
+  const weeklyWins = supportPlan ? getSupportPlanWins(supportPlan) : [];
 
   return (
     <div className="page">
@@ -237,6 +244,8 @@ export default async function DashboardPage({
                     </p>
                   </div>
                   <SupportPlanProgressForm
+                    currentFollowUpAt={step.followUpAt}
+                    currentNote={step.note}
                     currentStatus={step.status}
                     stepId={step.id}
                     suggestedStatus={step.suggestedStatus}
@@ -244,6 +253,155 @@ export default async function DashboardPage({
                 </article>
               ))}
             </div>
+          </div>
+        </section>
+      ) : null}
+
+      {supportPlan ? (
+        <section className="section split-layout">
+          <div className="section-panel section-panel--accent">
+            <SectionHeading
+              eyebrow="Follow-through tracker"
+              intro="Keep track of responses, next check-ins, and what still needs a gentle nudge."
+              title="Waiting on and follow up next."
+            />
+            <div className="stack-list">
+              <article className="sub-card">
+                <h3>Waiting on</h3>
+                {waitingOnSteps.length > 0 ? (
+                  <div className="stack-list">
+                    {waitingOnSteps.map((step) => (
+                      <article className="support-followup-card" key={`waiting-${step.id}`}>
+                        <div className="thread-card__meta">
+                          <div>
+                            <p className="feature-label">
+                              Step {step.position} • {getSupportStepKindLabel(step.kind)}
+                            </p>
+                            <h4>{step.title}</h4>
+                          </div>
+                          <span className="status-chip support-step-chip support-step-chip--contacted">
+                            {formatSupportStepStatus(step.status)}
+                          </span>
+                        </div>
+                        {step.note ? <p>{step.note}</p> : <p>{step.detail}</p>}
+                        <div className="support-followup-card__meta">
+                          <span>
+                            {step.followUpAt
+                              ? `Follow up by ${formatCalendarDate(step.followUpAt)}`
+                              : "No follow-up date set yet"}
+                          </span>
+                          <Link
+                            className="text-link"
+                            href={step.ctaHref}
+                            rel={isExternalHref(step.ctaHref) ? "noreferrer" : undefined}
+                            target={isExternalHref(step.ctaHref) ? "_blank" : undefined}
+                          >
+                            {step.ctaLabel}
+                          </Link>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty-state">
+                    <p>
+                      Mark a step as contacted when you reach out. It will show
+                      up here until you move it forward.
+                    </p>
+                  </div>
+                )}
+              </article>
+
+              <article className="sub-card">
+                <h3>Follow up next</h3>
+                {upcomingFollowUps.length > 0 ? (
+                  <div className="stack-list">
+                    {upcomingFollowUps.map((step) => (
+                      <article className="support-followup-card" key={`followup-${step.id}`}>
+                        <div className="thread-card__meta">
+                          <div>
+                            <p className="feature-label">
+                              {getSupportStepKindLabel(step.kind)}
+                            </p>
+                            <h4>{step.title}</h4>
+                          </div>
+                          <span className="status-chip">
+                            {step.followUpAt
+                              ? formatCalendarDate(step.followUpAt)
+                              : "No date"}
+                          </span>
+                        </div>
+                        <p>{step.note || step.detail}</p>
+                        <div className="support-followup-card__meta">
+                          <span>{formatSupportStepStatus(step.status)}</span>
+                          <Link
+                            className="text-link"
+                            href={step.ctaHref}
+                            rel={isExternalHref(step.ctaHref) ? "noreferrer" : undefined}
+                            target={isExternalHref(step.ctaHref) ? "_blank" : undefined}
+                          >
+                            {step.ctaLabel}
+                          </Link>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty-state">
+                    <p>
+                      Add a follow-up date inside any step to keep upcoming
+                      check-ins easy to see.
+                    </p>
+                  </div>
+                )}
+              </article>
+            </div>
+          </div>
+
+          <div className="section-panel">
+            <SectionHeading
+              eyebrow="Wins this week"
+              intro="Small progress still counts. Saved resources and finished steps stay visible here so momentum is easier to notice."
+              title="What moved forward."
+            />
+            {weeklyWins.length > 0 ? (
+              <div className="stack-list">
+                {weeklyWins.map((step) => (
+                  <article className="support-followup-card" key={`win-${step.id}`}>
+                    <div className="thread-card__meta">
+                      <div>
+                        <p className="feature-label">
+                          Step {step.position} • {getSupportStepKindLabel(step.kind)}
+                        </p>
+                        <h3>{step.title}</h3>
+                      </div>
+                      <span
+                        className={[
+                          "status-chip",
+                          "support-step-chip",
+                          getSupportStepStatusClassName(step.status),
+                        ].join(" ")}
+                      >
+                        {formatSupportStepStatus(step.status)}
+                      </span>
+                    </div>
+                    <p>{step.note || step.detail}</p>
+                    <p className="meta-copy">
+                      {step.statusUpdatedAt
+                        ? `Updated ${formatDateTime(step.statusUpdatedAt)}`
+                        : "Updated in this week's plan."}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-state">
+                <p>
+                  As you save resources or complete steps, this section will
+                  turn into a running reminder that progress is happening.
+                </p>
+              </div>
+            )}
           </div>
         </section>
       ) : null}

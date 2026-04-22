@@ -260,6 +260,8 @@ export type SupportPlanStepRecord = {
   targetType: SupportStepKind | null;
   suggestedStatus: SupportStepStatus;
   status: SupportStepStatus;
+  note: string;
+  followUpAt: string | null;
   statusUpdatedAt: string | null;
   completedAt: string | null;
   createdAt: string;

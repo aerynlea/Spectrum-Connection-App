@@ -93,6 +93,12 @@ export async function getLatestSupportPlanForUser(userId: string) {
     : (await getLocal()).getLatestSupportPlanForUser(userId);
 }
 
+export async function listSupportPlansForUser(userId: string, limit?: number) {
+  return isNeonConfigured
+    ? (await getHosted()).listSupportPlansForUser(userId, limit)
+    : (await getLocal()).listSupportPlansForUser(userId, limit);
+}
+
 export async function createSupportPlan(
   userId: string,
   input: Parameters<LocalModule["createSupportPlan"]>[1],
@@ -104,11 +110,11 @@ export async function createSupportPlan(
 
 export async function updateSupportPlanStepStatus(
   stepId: string,
-  status: Parameters<LocalModule["updateSupportPlanStepStatus"]>[1],
+  input: Parameters<LocalModule["updateSupportPlanStepStatus"]>[1],
 ) {
   return isNeonConfigured
-    ? (await getHosted()).updateSupportPlanStepStatus(stepId, status)
-    : (await getLocal()).updateSupportPlanStepStatus(stepId, status);
+    ? (await getHosted()).updateSupportPlanStepStatus(stepId, input)
+    : (await getLocal()).updateSupportPlanStepStatus(stepId, input);
 }
 
 export async function markSupportPlanRecapSent(planId: string, sentAt?: string) {

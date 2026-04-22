@@ -124,6 +124,8 @@ export type ProfileActionState = {
 export type SupportPlanStepActionState = {
   status: "idle" | "success" | "error";
   message: string | null;
+  currentFollowUpAt: string | null;
+  currentNote: string;
   currentStatus: SupportStepStatus | null;
 };
 
@@ -184,6 +186,18 @@ function summarizeModerationText(value: string, maxLength = 180) {
   }
 
   return `${normalized.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+function normalizeFollowUpAt(value: FormDataEntryValue | null) {
+  const raw = String(value ?? "").trim();
+
+  if (!raw) {
+    return null;
+  }
+
+  const date = new Date(`${raw}T12:00:00.000Z`);
+
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
 function buildModerationSubjectKey(targetUserId: string | null, targetAuthor: string) {
@@ -667,11 +681,15 @@ export async function updateSupportPlanStepStatusAction(
   const currentUser = await requireCurrentUser();
   const stepId = String(formData.get("stepId") ?? "").trim();
   const requestedStatus = String(formData.get("status") ?? "").trim();
+  const note = String(formData.get("note") ?? "").trim();
+  const followUpAt = normalizeFollowUpAt(formData.get("followUpAt"));
 
   if (!stepId || !validSupportStepStatuses.has(requestedStatus as SupportStepStatus)) {
     return {
       status: "error",
       message: "That step update did not go through.",
+      currentFollowUpAt: null,
+      currentNote: "",
       currentStatus: null,
     };
   }
@@ -683,23 +701,39 @@ export async function updateSupportPlanStepStatusAction(
     return {
       status: "error",
       message: "We could not find that step in your current weekly plan.",
+      currentFollowUpAt: null,
+      currentNote: "",
       currentStatus: null,
     };
   }
 
+  const nextStatus = requestedStatus as SupportStepStatus;
+  const nextNote = note.slice(0, 500);
   const updatedStep = await updateSupportPlanStepStatus(
     step.id,
-    requestedStatus as SupportStepStatus,
+    {
+      followUpAt,
+      note: nextNote,
+      status: nextStatus,
+    },
   );
+  const didStatusChange = nextStatus !== step.status;
+  const didNoteChange = nextNote !== step.note;
+  const didFollowUpChange = (followUpAt ?? null) !== (step.followUpAt ?? null);
 
   revalidatePath("/dashboard");
 
   return {
     status: "success",
-    message: `Step marked ${formatSupportStepStatus(
-      requestedStatus as SupportStepStatus,
-    ).toLowerCase()}.`,
-    currentStatus: updatedStep?.status ?? (requestedStatus as SupportStepStatus),
+    currentFollowUpAt:
+      updatedStep?.followUpAt ?? followUpAt ?? step.followUpAt,
+    currentNote: updatedStep?.note ?? nextNote,
+    message: didStatusChange
+      ? `Step marked ${formatSupportStepStatus(nextStatus).toLowerCase()}.`
+      : didNoteChange || didFollowUpChange
+        ? "Step details saved."
+        : "Step saved.",
+    currentStatus: updatedStep?.status ?? nextStatus,
   };
 }
 
@@ -817,7 +851,9 @@ export async function toggleSavedResourceAction(formData: FormData) {
     );
 
     if (matchingStep) {
-      await updateSupportPlanStepStatus(matchingStep.id, "saved");
+      await updateSupportPlanStepStatus(matchingStep.id, {
+        status: "saved",
+      });
     }
   }
 

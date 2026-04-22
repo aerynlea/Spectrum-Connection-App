@@ -226,6 +226,8 @@ type SupportPlanStepRow = {
   target_type: SupportStepKind | null;
   suggested_status: SupportStepStatus;
   status: SupportStepStatus;
+  note: string;
+  follow_up_at: string | null;
   status_updated_at: string | null;
   completed_at: string | null;
   created_at: string;
@@ -290,11 +292,17 @@ export type CreateSupportPlanInput = {
   }>;
 };
 
+export type UpdateSupportPlanStepInput = {
+  followUpAt?: string | null;
+  note?: string;
+  status: SupportStepStatus;
+};
+
 const dataDirectory = process.env.VERCEL
   ? join("/tmp", "guiding-light-data")
   : join(process.cwd(), "data");
 const databasePath = join(dataDirectory, "guiding-light.db");
-const schemaVersion = "2026-04-support-plans";
+const schemaVersion = "2026-04-follow-through-tracker";
 
 const globalForDatabase = globalThis as typeof globalThis & {
   guidingLightDb?: DatabaseSync;
@@ -511,6 +519,8 @@ function getDatabase() {
       target_type TEXT,
       suggested_status TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'not-started',
+      note TEXT NOT NULL DEFAULT '',
+      follow_up_at TEXT,
       status_updated_at TEXT,
       completed_at TEXT,
       created_at TEXT NOT NULL,
@@ -833,12 +843,28 @@ function ensureContentColumns(database: DatabaseSync) {
       target_type TEXT,
       suggested_status TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'not-started',
+      note TEXT NOT NULL DEFAULT '',
+      follow_up_at TEXT,
       status_updated_at TEXT,
       completed_at TEXT,
       created_at TEXT NOT NULL,
       FOREIGN KEY (plan_id) REFERENCES support_plans(id) ON DELETE CASCADE
     )
   `);
+
+  ensureColumn(
+    database,
+    "support_plan_steps",
+    "note",
+    "note TEXT NOT NULL DEFAULT ''",
+  );
+
+  ensureColumn(
+    database,
+    "support_plan_steps",
+    "follow_up_at",
+    "follow_up_at TEXT",
+  );
 
   database.exec(`
     CREATE UNIQUE INDEX IF NOT EXISTS support_plans_user_cycle_signature_idx
@@ -1054,6 +1080,8 @@ function toSupportPlanStep(row: SupportPlanStepRow): SupportPlanStepRecord {
     targetType: row.target_type,
     suggestedStatus: row.suggested_status,
     status: row.status,
+    note: row.note,
+    followUpAt: row.follow_up_at,
     statusUpdatedAt: row.status_updated_at,
     completedAt: row.completed_at,
     createdAt: row.created_at,
@@ -1097,6 +1125,8 @@ function getSupportPlanById(planId: string) {
         target_type,
         suggested_status,
         status,
+        note,
+        follow_up_at,
         status_updated_at,
         completed_at,
         created_at
@@ -1599,6 +1629,30 @@ export function getLatestSupportPlanForUser(userId: string) {
   return row ? getSupportPlanById(row.id) : null;
 }
 
+export function listSupportPlansForUser(userId: string, limit = 2) {
+  const rows = database()
+    .prepare(`
+      SELECT
+        id,
+        user_id,
+        cycle_start,
+        cycle_end,
+        profile_signature,
+        summary,
+        generated_at,
+        recap_sent_at
+      FROM support_plans
+      WHERE user_id = ?
+      ORDER BY generated_at DESC, cycle_start DESC
+      LIMIT ?
+    `)
+    .all(userId, limit) as SupportPlanRow[];
+
+  return rows
+    .map((row) => getSupportPlanById(row.id))
+    .filter((plan): plan is SupportPlanRecord => Boolean(plan));
+}
+
 export function createSupportPlan(userId: string, input: CreateSupportPlanInput) {
   const createdAt = new Date().toISOString();
   const planId = randomUUID();
@@ -1656,10 +1710,12 @@ export function createSupportPlan(userId: string, input: CreateSupportPlanInput)
         target_type,
         suggested_status,
         status,
+        note,
+        follow_up_at,
         status_updated_at,
         completed_at,
         created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     for (const step of input.steps) {
@@ -1677,6 +1733,8 @@ export function createSupportPlan(userId: string, input: CreateSupportPlanInput)
         step.targetType,
         step.suggestedStatus,
         "not-started",
+        "",
+        null,
         null,
         null,
         createdAt,
@@ -1689,21 +1747,44 @@ export function createSupportPlan(userId: string, input: CreateSupportPlanInput)
 
 export function updateSupportPlanStepStatus(
   stepId: string,
-  status: SupportStepStatus,
+  input: UpdateSupportPlanStepInput,
 ) {
   const updatedAt = new Date().toISOString();
+  const shouldUpdateNote = Object.prototype.hasOwnProperty.call(input, "note");
+  const shouldUpdateFollowUpAt = Object.prototype.hasOwnProperty.call(
+    input,
+    "followUpAt",
+  );
 
   database().prepare(`
     UPDATE support_plan_steps
     SET
       status = ?,
+      note = CASE
+        WHEN ? THEN ?
+        ELSE note
+      END,
+      follow_up_at = CASE
+        WHEN ? THEN ?
+        ELSE follow_up_at
+      END,
       status_updated_at = ?,
       completed_at = CASE
         WHEN ? = 'not-started' THEN NULL
         ELSE COALESCE(completed_at, ?)
       END
     WHERE id = ?
-  `).run(status, updatedAt, status, updatedAt, stepId);
+  `).run(
+    input.status,
+    shouldUpdateNote ? 1 : 0,
+    shouldUpdateNote ? (input.note ?? "").trim() : null,
+    shouldUpdateFollowUpAt ? 1 : 0,
+    shouldUpdateFollowUpAt ? input.followUpAt ?? null : null,
+    updatedAt,
+    input.status,
+    updatedAt,
+    stepId,
+  );
 
   const row = database()
     .prepare(`
@@ -1721,6 +1802,8 @@ export function updateSupportPlanStepStatus(
         target_type,
         suggested_status,
         status,
+        note,
+        follow_up_at,
         status_updated_at,
         completed_at,
         created_at
