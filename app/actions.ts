@@ -38,6 +38,7 @@ import {
   deleteSessionsForUser,
   getCommunityPostById,
   getCommunityReplyById,
+  getLatestSupportPlanForUser,
   getLatestPasswordResetTokenForUser,
   getProfessionalById,
   listMemberRoster,
@@ -82,7 +83,10 @@ import {
   isClerkConfigured,
   isLocalDevelopment,
 } from "@/lib/platform";
-import { ensureCurrentSupportPlanForUser } from "@/lib/support-plans";
+import {
+  ensureCurrentSupportPlanForUser,
+  getSupportPlanWindow,
+} from "@/lib/support-plans";
 import { reportReasonOptions } from "@/lib/site-data";
 import { stripe, getStripePriceId, getStripeReturnUrl } from "@/lib/stripe";
 
@@ -129,9 +133,26 @@ export type SupportPlanStepActionState = {
   currentStatus: SupportStepStatus | null;
 };
 
+export type ToggleSavedResourceActionState = {
+  isSaved: boolean;
+  message: string | null;
+  refreshCurrentPage: boolean;
+  status: "success" | "error";
+};
+
 function buildPath(pathname: string, params: Record<string, string>) {
   const search = new URLSearchParams(params);
   return `${pathname}?${search.toString()}`;
+}
+
+function normalizeReturnPathname(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed.startsWith("/")) {
+    return "/resources";
+  }
+
+  return trimmed.split("#")[0]?.split("?")[0] || "/resources";
 }
 
 function appendNoticeToPath(
@@ -830,21 +851,31 @@ export async function sendNewsletterAction(formData: FormData) {
   );
 }
 
-export async function toggleSavedResourceAction(formData: FormData) {
+export async function toggleSavedResourceAction(input: {
+  resourceId: string;
+  returnTo?: string;
+}): Promise<ToggleSavedResourceActionState> {
   const currentUser = await requireCurrentUser();
-  const resourceId = String(formData.get("resourceId") ?? "");
-  const returnTo = String(formData.get("returnTo") ?? "/resources");
+  const resourceId = input.resourceId.trim();
+  const returnPath = normalizeReturnPathname(input.returnTo ?? "/resources");
 
   if (!resourceId) {
-    redirect(returnTo);
+    return {
+      isSaved: false,
+      message: "We could not save that resource.",
+      refreshCurrentPage: false,
+      status: "error",
+    };
   }
 
-  const wasSaved = await toggleSavedResource(currentUser.id, resourceId);
+  const isSaved = await toggleSavedResource(currentUser.id, resourceId);
 
-  if (wasSaved) {
-    const currentPlan = await ensureCurrentSupportPlanForUser(currentUser);
+  if (isSaved) {
+    const currentPlan = await getLatestSupportPlanForUser(currentUser.id);
+    const { cycleStart } = getSupportPlanWindow();
     const matchingStep = currentPlan?.steps.find(
       (step) =>
+        currentPlan.cycleStart === cycleStart &&
         step.targetType === "resource" &&
         step.targetId === resourceId &&
         step.status === "not-started",
@@ -857,8 +888,18 @@ export async function toggleSavedResourceAction(formData: FormData) {
     }
   }
 
-  revalidateAppShell();
-  redirect(returnTo);
+  revalidatePath(returnPath);
+
+  if (returnPath !== "/dashboard") {
+    revalidatePath("/dashboard");
+  }
+
+  return {
+    isSaved,
+    message: isSaved ? "Resource saved." : "Resource removed.",
+    refreshCurrentPage: returnPath === "/dashboard",
+    status: "success",
+  };
 }
 
 export async function startPremiumCheckoutAction() {

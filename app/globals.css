@@ -1890,6 +1890,11 @@ a {
   transform: translateY(-1px);
 }
 
+.save-button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
 .save-button--active {
   background: var(--soft-fill-strong);
   color: var(--text);
