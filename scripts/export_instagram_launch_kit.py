@@ -6,6 +6,8 @@ from typing import Dict, List
 import shutil
 import zipfile
 
+import imageio.v2 as imageio
+import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 
@@ -15,6 +17,7 @@ POSTS_ROOT = OUTPUT_ROOT / "posts"
 HIGHLIGHTS_ROOT = OUTPUT_ROOT / "story-highlights"
 REELS_ROOT = OUTPUT_ROOT / "reel-covers"
 REEL_SCRIPTS_ROOT = OUTPUT_ROOT / "reel-scripts"
+REEL_VIDEOS_ROOT = OUTPUT_ROOT / "reel-videos"
 STORY_OVERLAYS_ROOT = OUTPUT_ROOT / "story-text-overlays"
 CALENDAR_ROOT = OUTPUT_ROOT / "launch-calendar"
 PUBLIC_ROOT = PROJECT_ROOT / "public"
@@ -1134,6 +1137,111 @@ def clean_story_slug(post_slug: str) -> str:
     return post_slug
 
 
+def sanitize_beat_text(text: str) -> str:
+    replacements = (
+        ("Show ", ""),
+        ("Open with ", ""),
+        ("Point to ", ""),
+        ("End with ", ""),
+        ("Close with ", ""),
+        ("Layer in ", ""),
+        ("Use ", ""),
+    )
+    cleaned = text.strip()
+    for prefix, replacement in replacements:
+        if cleaned.startswith(prefix):
+            cleaned = replacement + cleaned[len(prefix) :]
+    return cleaned[:1].upper() + cleaned[1:] if cleaned else text
+
+
+def build_reel_text_frame(item: Dict, title: str, body: str, step_label: str, footer: str) -> Image.Image:
+    image = make_gradient(TONE_BG[item["tone"]], VERTICAL_WIDTH, VERTICAL_HEIGHT)
+    draw = ImageDraw.Draw(image)
+
+    draw_brand_mark(draw, 84, 120, scale=0.92)
+
+    pill = (82, 300, 404, 374)
+    draw.rounded_rectangle(pill, radius=34, fill=(255, 255, 255, 42))
+    draw.text((118, 320), step_label.upper(), font=load_font(TITLE_FONT, 28), fill="white")
+
+    title_font = load_font(TITLE_FONT, 92)
+    body_font = load_font(TITLE_FONT, 42)
+    footer_font = load_font(TITLE_FONT, 34)
+
+    title_lines = wrap_paragraph(title, title_font, 860, 4)
+    draw_text_block(draw, 92, 430, title_lines, title_font, "white", 104)
+
+    body_y = 430 + len(title_lines) * 104 + 38
+    body_lines = wrap_paragraph(body, body_font, 820, 5)
+    draw_text_block(draw, 92, body_y, body_lines, body_font, (255, 255, 255, 230), 58)
+
+    footer_box = (84, 1664, 996, 1834)
+    draw.rounded_rectangle(footer_box, radius=42, fill=(13, 19, 39, 62))
+    draw.text((124, 1710), footer, font=footer_font, fill="white")
+    draw.text((124, 1762), INSTAGRAM_HANDLE, font=load_font(BODY_FONT, 30), fill=(255, 255, 255, 220))
+    return image.convert("RGB")
+
+
+def zoom_frame(image: Image.Image, progress: float) -> np.ndarray:
+    scale = 1.0 + 0.05 * progress
+    new_width = int(image.width * scale)
+    new_height = int(image.height * scale)
+    resized = image.resize((new_width, new_height), resample=Image.Resampling.LANCZOS)
+    left = (new_width - image.width) // 2
+    top = (new_height - image.height) // 2
+    cropped = resized.crop((left, top, left + image.width, top + image.height))
+    return np.asarray(cropped, dtype=np.uint8)
+
+
+def build_reel_video_frames(item: Dict) -> List[Image.Image]:
+    cta_title = "Follow for calmer support that feels more human."
+    cta_body = f"Save this reel, visit {SITE_URL}, and share it with someone who needs a softer place to begin."
+    beat_texts = [sanitize_beat_text(beat) for beat in item["beats"][:3]]
+
+    return [
+        build_reel_cover(item),
+        build_reel_text_frame(item, item["hook"], item["subtitle"], "Hook", "Start here"),
+        build_reel_text_frame(item, beat_texts[0], "Keep the pace calm, clear, and easy to save for later.", "Step 1", "Guiding Light support"),
+        build_reel_text_frame(item, beat_texts[1], "Show one useful step at a time so viewers can picture what support looks like.", "Step 2", "Useful, not overwhelming"),
+        build_reel_text_frame(item, cta_title, cta_body, "Call to action", "theguidinglight.com"),
+    ]
+
+
+def write_reel_videos() -> None:
+    fps = 24
+    scene_frames = fps * 2
+    transition_frames = int(fps * 0.4)
+
+    for item in REELS:
+        video_path = REEL_VIDEOS_ROOT / f"{item['slug']}.mp4"
+        frames = build_reel_video_frames(item)
+
+        with imageio.get_writer(
+            video_path,
+            fps=fps,
+            codec="libx264",
+            quality=8,
+            macro_block_size=None,
+            pixelformat="yuv420p",
+        ) as writer:
+            for index, frame in enumerate(frames):
+                for frame_index in range(scene_frames):
+                    progress = frame_index / max(scene_frames - 1, 1)
+                    writer.append_data(zoom_frame(frame, progress))
+
+                if index == len(frames) - 1:
+                    continue
+
+                next_frame = frames[index + 1]
+                current_end = zoom_frame(frame, 1.0).astype(np.float32)
+                next_start = zoom_frame(next_frame, 0.0).astype(np.float32)
+
+                for transition_index in range(transition_frames):
+                    mix = (transition_index + 1) / (transition_frames + 1)
+                    blended = ((1 - mix) * current_end + mix * next_start).clip(0, 255).astype(np.uint8)
+                    writer.append_data(blended)
+
+
 def write_calendar_file(rows: List[Dict[str, str]], md_path: Path, csv_path: Path, title: str, intro: str) -> None:
     md_lines = [
         f"# {title}",
@@ -1171,6 +1279,7 @@ def write_root_readme() -> None:
         "- Story highlight covers: `story-highlights/`",
         "- Reel covers: `reel-covers/`",
         "- Reel scripts: `reel-scripts/`",
+        "- Reel videos: `reel-videos/`",
         "- Story text overlays: `story-text-overlays/`",
         "- Launch calendars: `launch-calendar/`",
         "",
@@ -1275,12 +1384,14 @@ def export_assets() -> None:
     HIGHLIGHTS_ROOT.mkdir(parents=True, exist_ok=True)
     REELS_ROOT.mkdir(parents=True, exist_ok=True)
     REEL_SCRIPTS_ROOT.mkdir(parents=True, exist_ok=True)
+    REEL_VIDEOS_ROOT.mkdir(parents=True, exist_ok=True)
     STORY_OVERLAYS_ROOT.mkdir(parents=True, exist_ok=True)
     CALENDAR_ROOT.mkdir(parents=True, exist_ok=True)
 
     write_root_readme()
     write_caption_files()
     write_reel_scripts()
+    write_reel_videos()
 
     for post in POSTS:
         post_dir = POSTS_ROOT / post["slug"]

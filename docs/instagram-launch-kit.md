@@ -28,6 +28,8 @@ Zip file:
   reel hooks, voiceover copy, shot lists, and captions
 - `reel-scripts.md`
   all reel scripts in one file
+- `reel-videos/`
+  upload-ready vertical MP4 reel files
 - `story-text-overlays/`
   vertical story-ready text overlays that point people back to the feed carousels
 - `launch-calendar/launch-calendar.md`
@@ -60,7 +62,7 @@ Zip file:
 - Use the month 1 calendar first
 - Move into the month 2 calendar for the next wave
 - Use the story overlays the day after a carousel post to bring people back to it
-- Use reel covers for simple screen-record or talking-head reels
+- Post the `reel-videos/` MP4s directly, or use the reel covers plus scripts if you want to record a custom voiceover version
 
 ## Story highlights
 
@@ -78,4 +80,5 @@ Zip file:
 - Feed posts are exported as `1080x1350` PNGs
 - Story highlight covers are exported as `1080x1920` PNGs
 - Reel covers are exported as `1080x1920` PNGs
+- Reel videos are exported as `1080x1920` MP4s
 - Story text overlays are exported as `1080x1920` PNGs
