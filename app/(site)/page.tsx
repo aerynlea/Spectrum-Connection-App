@@ -15,6 +15,7 @@ import {
   getResourceQuickStartSummaries,
 } from "@/lib/resources";
 import { getQueryMessage, type PageSearchParams } from "@/lib/search-params";
+import { instagramHandle } from "@/lib/social-kit";
 import {
   ageTracks,
   audienceGroups,
@@ -28,6 +29,7 @@ type HomePageProps = {
 };
 
 export default async function HomePage({ searchParams }: HomePageProps) {
+  const guidingLightInstagramUrl = "https://www.instagram.com/theguidinglightconnect/";
   const currentUserPromise = getCurrentUser();
   const [currentUser, message, stats, posts, events] = await Promise.all([
     currentUserPromise,
@@ -203,6 +205,20 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             create for other families and autistic people who need connection,
             encouragement, and real-life support.
           </p>
+          <div className="button-row button-row--compact">
+            <Link
+              className="button-secondary"
+              href={guidingLightInstagramUrl}
+              rel="noreferrer"
+              target="_blank"
+            >
+              Follow Guiding Light on Instagram
+            </Link>
+          </div>
+          <p className="meta-copy">
+            Follow along at {instagramHandle} for updates, encouragement, and
+            more of our story.
+          </p>
           <div className="pill-list" aria-label="Founder story highlights">
             {founderStoryHighlights.map((highlight) => (
               <span className="pill" key={highlight}>
@@ -247,6 +263,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               className="founder-photo"
               height={1400}
               src="/family/founder-son-portrait-2.jpeg"
+              width={1200}
+            />
+          </article>
+          <article className="founder-gallery__card">
+            <Image
+              alt="A portrait of the founder's son smiling in glasses and a red jacket."
+              className="founder-photo"
+              height={1400}
+              src="/family/founder-son-portrait-3.jpeg"
               width={1200}
             />
           </article>

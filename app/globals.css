@@ -762,7 +762,7 @@ a {
 }
 
 .founder-gallery__hero {
-  grid-row: span 2;
+  grid-row: span 3;
   min-height: 28rem;
 }
 
@@ -2545,6 +2545,10 @@ a {
   .founder-gallery__card--accent {
     min-height: auto;
     transform: none;
+  }
+
+  .founder-gallery__hero {
+    grid-row: span 1;
   }
 
   .hero-copy h1,
