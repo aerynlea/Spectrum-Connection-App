@@ -214,6 +214,8 @@ type SupportPlanStepRow = {
   status: SupportStepStatus;
   note: string;
   follow_up_at: string | null;
+  follow_up_reminder_sent_at: string | null;
+  follow_up_reminder_sent_for: string | null;
   status_updated_at: string | null;
   completed_at: string | null;
   created_at: string;
@@ -482,6 +484,8 @@ function toSupportPlanStep(row: SupportPlanStepRow): SupportPlanStepRecord {
     status: row.status,
     note: row.note,
     followUpAt: row.follow_up_at,
+    followUpReminderSentAt: row.follow_up_reminder_sent_at,
+    followUpReminderSentFor: row.follow_up_reminder_sent_for,
     statusUpdatedAt: row.status_updated_at,
     completedAt: row.completed_at,
     createdAt: row.created_at,
@@ -526,6 +530,8 @@ async function getSupportPlanById(planId: string) {
       status,
       note,
       follow_up_at,
+      follow_up_reminder_sent_at,
+      follow_up_reminder_sent_for,
       status_updated_at,
       completed_at,
       created_at
@@ -917,6 +923,8 @@ async function seedHostedDatabase() {
       status TEXT NOT NULL DEFAULT 'not-started',
       note TEXT NOT NULL DEFAULT '',
       follow_up_at TEXT,
+      follow_up_reminder_sent_at TEXT,
+      follow_up_reminder_sent_for TEXT,
       status_updated_at TEXT,
       completed_at TEXT,
       created_at TEXT NOT NULL
@@ -931,6 +939,16 @@ async function seedHostedDatabase() {
   await sql.query(`
     ALTER TABLE support_plan_steps
     ADD COLUMN IF NOT EXISTS follow_up_at TEXT
+  `);
+
+  await sql.query(`
+    ALTER TABLE support_plan_steps
+    ADD COLUMN IF NOT EXISTS follow_up_reminder_sent_at TEXT
+  `);
+
+  await sql.query(`
+    ALTER TABLE support_plan_steps
+    ADD COLUMN IF NOT EXISTS follow_up_reminder_sent_for TEXT
   `);
 
   await sql.query(`
@@ -1593,6 +1611,8 @@ export async function createSupportPlan(userId: string, input: CreateSupportPlan
           status,
           note,
           follow_up_at,
+          follow_up_reminder_sent_at,
+          follow_up_reminder_sent_for,
           status_updated_at,
           completed_at,
           created_at
@@ -1611,6 +1631,8 @@ export async function createSupportPlan(userId: string, input: CreateSupportPlan
           ${step.suggestedStatus},
           ${"not-started"},
           ${""},
+          ${null},
+          ${null},
           ${null},
           ${null},
           ${null},
@@ -1649,6 +1671,18 @@ export async function updateSupportPlanStepStatus(
         WHEN ${shouldUpdateFollowUpAt} THEN ${input.followUpAt ?? null}
         ELSE follow_up_at
       END,
+      follow_up_reminder_sent_at = CASE
+        WHEN ${shouldUpdateFollowUpAt}
+          AND COALESCE(follow_up_at, '') <> COALESCE(${input.followUpAt ?? null}, '')
+          THEN NULL
+        ELSE follow_up_reminder_sent_at
+      END,
+      follow_up_reminder_sent_for = CASE
+        WHEN ${shouldUpdateFollowUpAt}
+          AND COALESCE(follow_up_at, '') <> COALESCE(${input.followUpAt ?? null}, '')
+          THEN NULL
+        ELSE follow_up_reminder_sent_for
+      END,
       status_updated_at = ${updatedAt},
       completed_at = CASE
         WHEN ${input.status} = 'not-started' THEN NULL
@@ -1674,6 +1708,8 @@ export async function updateSupportPlanStepStatus(
       status,
       note,
       follow_up_at,
+      follow_up_reminder_sent_at,
+      follow_up_reminder_sent_for,
       status_updated_at,
       completed_at,
       created_at
@@ -1699,6 +1735,52 @@ export async function markSupportPlanRecapSent(
   `;
 
   return getSupportPlanById(planId);
+}
+
+export async function markSupportPlanStepFollowUpReminderSent(
+  stepId: string,
+  sentFor: string,
+  sentAt = new Date().toISOString(),
+) {
+  await ensureHostedDatabase();
+  const sql = getSql();
+
+  await sql`
+    UPDATE support_plan_steps
+    SET
+      follow_up_reminder_sent_at = ${sentAt},
+      follow_up_reminder_sent_for = ${sentFor}
+    WHERE id = ${stepId}
+  `;
+
+  const [row] = (await sql`
+    SELECT
+      id,
+      plan_id,
+      position,
+      kind,
+      title,
+      detail,
+      rationale,
+      cta_label,
+      cta_href,
+      target_id,
+      target_type,
+      suggested_status,
+      status,
+      note,
+      follow_up_at,
+      follow_up_reminder_sent_at,
+      follow_up_reminder_sent_for,
+      status_updated_at,
+      completed_at,
+      created_at
+    FROM support_plan_steps
+    WHERE id = ${stepId}
+    LIMIT 1
+  `) as SupportPlanStepRow[];
+
+  return row ? toSupportPlanStep(row) : null;
 }
 
 export async function createSession(userId: string, expiresAt: string) {

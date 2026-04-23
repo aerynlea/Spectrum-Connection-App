@@ -3,6 +3,10 @@
   "framework": "nextjs",
   "crons": [
     {
+      "path": "/api/cron/due-followups",
+      "schedule": "0 18 * * *"
+    },
+    {
       "path": "/api/cron/weekly-recap",
       "schedule": "0 16 * * 1"
     }

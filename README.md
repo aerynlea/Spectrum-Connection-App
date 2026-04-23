@@ -148,6 +148,20 @@ In production, set `CRON_SECRET` so Vercel can authorize the cron request secure
 The included `vercel.json` schedules the recap route to run weekly on Mondays at
 `16:00 UTC`.
 
+## Due follow-up reminders
+
+Guiding Light also sends a lighter reminder email when a subscribed member has
+support-plan follow-ups that are overdue or due today.
+
+- The reminder route is `/api/cron/due-followups`.
+- It reuses the same newsletter email configuration and `CRON_SECRET`.
+- It skips members who already received their weekly recap that same day.
+- Each step is only reminded once for its current follow-up date. If the follow-up
+  date changes, it becomes eligible for a new reminder.
+
+The included `vercel.json` schedules due follow-up reminders daily at
+`18:00 UTC`.
+
 ## Verification
 
 Run:

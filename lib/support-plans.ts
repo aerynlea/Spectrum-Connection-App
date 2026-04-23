@@ -17,6 +17,7 @@ import {
   listResources,
   listSupportPlansForUser,
   markSupportPlanRecapSent,
+  markSupportPlanStepFollowUpReminderSent,
 } from "@/lib/data";
 import { sendNewsletterEmail } from "@/lib/email";
 import {
@@ -513,6 +514,28 @@ function toUtcDateKey(value: string | Date) {
     .slice(0, 10);
 }
 
+function getReminderBucketForStep(
+  step: SupportPlanRecord["steps"][number],
+  referenceDate = new Date(),
+) {
+  if (!step.followUpAt) {
+    return null;
+  }
+
+  const todayKey = toUtcDateKey(referenceDate);
+  const followUpKey = toUtcDateKey(step.followUpAt);
+
+  if (followUpKey < todayKey) {
+    return "overdue" as const;
+  }
+
+  if (followUpKey === todayKey) {
+    return "today" as const;
+  }
+
+  return null;
+}
+
 export function getSupportPlanWaitingOn(plan: SupportPlanRecord) {
   return plan.steps
     .filter((step) => step.status === "contacted")
@@ -569,6 +592,32 @@ export function getSupportPlanDueNow(
     today,
     totalCount: overdue.length + today.length + thisWeek.length,
   };
+}
+
+export function wasSupportPlanRecapSentOnDate(
+  plan: SupportPlanRecord,
+  referenceDate = new Date(),
+) {
+  if (!plan.recapSentAt) {
+    return false;
+  }
+
+  return toUtcDateKey(plan.recapSentAt) === toUtcDateKey(referenceDate);
+}
+
+export function getSupportPlanDueReminderCandidates(
+  plan: SupportPlanRecord,
+  referenceDate = new Date(),
+) {
+  const dueNow = getSupportPlanDueNow(plan, referenceDate);
+
+  return [...dueNow.overdue, ...dueNow.today]
+    .filter(
+      (step) =>
+        Boolean(step.followUpAt) &&
+        step.followUpReminderSentFor !== step.followUpAt,
+    )
+    .sort(sortByFollowUpDate);
 }
 
 export function getSupportPlanWins(plan: SupportPlanRecord) {
@@ -695,6 +744,63 @@ export function buildSupportPlanEmailContent(
   };
 }
 
+export function buildSupportPlanDueReminderEmailContent(
+  user: AppUser,
+  plan: SupportPlanRecord,
+  steps: SupportPlanRecord["steps"],
+  referenceDate = new Date(),
+) {
+  const overdueCount = steps.filter(
+    (step) => getReminderBucketForStep(step, referenceDate) === "overdue",
+  ).length;
+  const todayCount = steps.filter(
+    (step) => getReminderBucketForStep(step, referenceDate) === "today",
+  ).length;
+  const summaryParts = [
+    overdueCount > 0 ? `${overdueCount} overdue` : null,
+    todayCount > 0 ? `${todayCount} due today` : null,
+  ].filter((part): part is string => Boolean(part));
+  const subject =
+    steps.length === 1
+      ? todayCount === 1
+        ? "A follow-up is due today in Guiding Light"
+        : "A follow-up needs attention in Guiding Light"
+      : `${steps.length} follow-ups need attention in Guiding Light`;
+  const body = [
+    `A gentle follow-up check-in from Guiding Light for your plan week of ${getSupportPlanDateLabel(plan)}, shaped around ${user.location}.`,
+    `Right now you have ${summaryParts.join(" and ")} in your current support plan.`,
+    "",
+    ...steps.map((step, index) => {
+      const bucket = getReminderBucketForStep(step, referenceDate);
+      const urgencyLabel =
+        bucket === "overdue"
+          ? "Overdue"
+          : bucket === "today"
+            ? "Due today"
+            : "Needs attention";
+      const lines = [
+        `${index + 1}. ${step.title}`,
+        step.note.trim() ? `Latest note: ${step.note.trim()}` : step.detail,
+        `Urgency: ${urgencyLabel}`,
+        `Follow up: ${step.followUpAt ? formatCalendarDate(step.followUpAt) : "No date set"}`,
+        `Current status: ${formatSupportStepStatus(step.status)}`,
+        `Open support: ${toAbsoluteHref(step.ctaHref)}`,
+      ];
+
+      return lines.join("\n");
+    }),
+    "",
+    `Dashboard: ${toAbsoluteHref("/dashboard")}`,
+    "",
+    "Use the Due now area on your dashboard to mark a step done, contact someone back, or move the follow-up forward in one click.",
+  ].join("\n");
+
+  return {
+    body,
+    subject,
+  };
+}
+
 export async function sendSupportPlanRecapEmail(user: AppUser, plan: SupportPlanRecord) {
   const postalAddress = getNewsletterPostalAddress();
 
@@ -717,6 +823,48 @@ export async function sendSupportPlanRecapEmail(user: AppUser, plan: SupportPlan
 
   if (delivered) {
     await markSupportPlanRecapSent(plan.id);
+  }
+
+  return delivered;
+}
+
+export async function sendSupportPlanDueReminderEmail(
+  user: AppUser,
+  plan: SupportPlanRecord,
+  steps: SupportPlanRecord["steps"],
+  referenceDate = new Date(),
+) {
+  const postalAddress = getNewsletterPostalAddress();
+
+  if (!postalAddress || steps.length === 0) {
+    return false;
+  }
+
+  const { body, subject } = buildSupportPlanDueReminderEmailContent(
+    user,
+    plan,
+    steps,
+    referenceDate,
+  );
+  const delivered = await sendNewsletterEmail({
+    name: user.name,
+    to: user.email,
+    subject,
+    body,
+    unsubscribeUrl: buildNewsletterUnsubscribeUrl(user),
+    postalAddress,
+  });
+
+  if (delivered) {
+    await Promise.all(
+      steps
+        .filter((step): step is SupportPlanRecord["steps"][number] & { followUpAt: string } =>
+          Boolean(step.followUpAt),
+        )
+        .map((step) =>
+          markSupportPlanStepFollowUpReminderSent(step.id, step.followUpAt),
+        ),
+    );
   }
 
   return delivered;

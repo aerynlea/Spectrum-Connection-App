@@ -123,6 +123,16 @@ export async function markSupportPlanRecapSent(planId: string, sentAt?: string) 
     : (await getLocal()).markSupportPlanRecapSent(planId, sentAt);
 }
 
+export async function markSupportPlanStepFollowUpReminderSent(
+  stepId: string,
+  sentFor: string,
+  sentAt?: string,
+) {
+  return isNeonConfigured
+    ? (await getHosted()).markSupportPlanStepFollowUpReminderSent(stepId, sentFor, sentAt)
+    : (await getLocal()).markSupportPlanStepFollowUpReminderSent(stepId, sentFor, sentAt);
+}
+
 export async function createSession(userId: string, expiresAt: string) {
   return isNeonConfigured
     ? (await getHosted()).createSession(userId, expiresAt)

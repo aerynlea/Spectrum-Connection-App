@@ -228,6 +228,8 @@ type SupportPlanStepRow = {
   status: SupportStepStatus;
   note: string;
   follow_up_at: string | null;
+  follow_up_reminder_sent_at: string | null;
+  follow_up_reminder_sent_for: string | null;
   status_updated_at: string | null;
   completed_at: string | null;
   created_at: string;
@@ -302,7 +304,7 @@ const dataDirectory = process.env.VERCEL
   ? join("/tmp", "guiding-light-data")
   : join(process.cwd(), "data");
 const databasePath = join(dataDirectory, "guiding-light.db");
-const schemaVersion = "2026-04-follow-through-tracker";
+const schemaVersion = "2026-04-due-follow-up-reminders";
 
 const globalForDatabase = globalThis as typeof globalThis & {
   guidingLightDb?: DatabaseSync;
@@ -521,6 +523,8 @@ function getDatabase() {
       status TEXT NOT NULL DEFAULT 'not-started',
       note TEXT NOT NULL DEFAULT '',
       follow_up_at TEXT,
+      follow_up_reminder_sent_at TEXT,
+      follow_up_reminder_sent_for TEXT,
       status_updated_at TEXT,
       completed_at TEXT,
       created_at TEXT NOT NULL,
@@ -845,6 +849,8 @@ function ensureContentColumns(database: DatabaseSync) {
       status TEXT NOT NULL DEFAULT 'not-started',
       note TEXT NOT NULL DEFAULT '',
       follow_up_at TEXT,
+      follow_up_reminder_sent_at TEXT,
+      follow_up_reminder_sent_for TEXT,
       status_updated_at TEXT,
       completed_at TEXT,
       created_at TEXT NOT NULL,
@@ -864,6 +870,20 @@ function ensureContentColumns(database: DatabaseSync) {
     "support_plan_steps",
     "follow_up_at",
     "follow_up_at TEXT",
+  );
+
+  ensureColumn(
+    database,
+    "support_plan_steps",
+    "follow_up_reminder_sent_at",
+    "follow_up_reminder_sent_at TEXT",
+  );
+
+  ensureColumn(
+    database,
+    "support_plan_steps",
+    "follow_up_reminder_sent_for",
+    "follow_up_reminder_sent_for TEXT",
   );
 
   database.exec(`
@@ -1082,6 +1102,8 @@ function toSupportPlanStep(row: SupportPlanStepRow): SupportPlanStepRecord {
     status: row.status,
     note: row.note,
     followUpAt: row.follow_up_at,
+    followUpReminderSentAt: row.follow_up_reminder_sent_at,
+    followUpReminderSentFor: row.follow_up_reminder_sent_for,
     statusUpdatedAt: row.status_updated_at,
     completedAt: row.completed_at,
     createdAt: row.created_at,
@@ -1127,6 +1149,8 @@ function getSupportPlanById(planId: string) {
         status,
         note,
         follow_up_at,
+        follow_up_reminder_sent_at,
+        follow_up_reminder_sent_for,
         status_updated_at,
         completed_at,
         created_at
@@ -1712,10 +1736,12 @@ export function createSupportPlan(userId: string, input: CreateSupportPlanInput)
         status,
         note,
         follow_up_at,
+        follow_up_reminder_sent_at,
+        follow_up_reminder_sent_for,
         status_updated_at,
         completed_at,
         created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     for (const step of input.steps) {
@@ -1734,6 +1760,8 @@ export function createSupportPlan(userId: string, input: CreateSupportPlanInput)
         step.suggestedStatus,
         "not-started",
         "",
+        null,
+        null,
         null,
         null,
         null,
@@ -1768,6 +1796,14 @@ export function updateSupportPlanStepStatus(
         WHEN ? THEN ?
         ELSE follow_up_at
       END,
+      follow_up_reminder_sent_at = CASE
+        WHEN ? AND COALESCE(follow_up_at, '') <> COALESCE(?, '') THEN NULL
+        ELSE follow_up_reminder_sent_at
+      END,
+      follow_up_reminder_sent_for = CASE
+        WHEN ? AND COALESCE(follow_up_at, '') <> COALESCE(?, '') THEN NULL
+        ELSE follow_up_reminder_sent_for
+      END,
       status_updated_at = ?,
       completed_at = CASE
         WHEN ? = 'not-started' THEN NULL
@@ -1778,6 +1814,10 @@ export function updateSupportPlanStepStatus(
     input.status,
     shouldUpdateNote ? 1 : 0,
     shouldUpdateNote ? (input.note ?? "").trim() : null,
+    shouldUpdateFollowUpAt ? 1 : 0,
+    shouldUpdateFollowUpAt ? input.followUpAt ?? null : null,
+    shouldUpdateFollowUpAt ? 1 : 0,
+    shouldUpdateFollowUpAt ? input.followUpAt ?? null : null,
     shouldUpdateFollowUpAt ? 1 : 0,
     shouldUpdateFollowUpAt ? input.followUpAt ?? null : null,
     updatedAt,
@@ -1804,6 +1844,8 @@ export function updateSupportPlanStepStatus(
         status,
         note,
         follow_up_at,
+        follow_up_reminder_sent_at,
+        follow_up_reminder_sent_for,
         status_updated_at,
         completed_at,
         created_at
@@ -1823,6 +1865,50 @@ export function markSupportPlanRecapSent(planId: string, sentAt = new Date().toI
   `).run(sentAt, planId);
 
   return getSupportPlanById(planId);
+}
+
+export function markSupportPlanStepFollowUpReminderSent(
+  stepId: string,
+  sentFor: string,
+  sentAt = new Date().toISOString(),
+) {
+  database().prepare(`
+    UPDATE support_plan_steps
+    SET
+      follow_up_reminder_sent_at = ?,
+      follow_up_reminder_sent_for = ?
+    WHERE id = ?
+  `).run(sentAt, sentFor, stepId);
+
+  const row = database()
+    .prepare(`
+      SELECT
+        id,
+        plan_id,
+        position,
+        kind,
+        title,
+        detail,
+        rationale,
+        cta_label,
+        cta_href,
+        target_id,
+        target_type,
+        suggested_status,
+        status,
+        note,
+        follow_up_at,
+        follow_up_reminder_sent_at,
+        follow_up_reminder_sent_for,
+        status_updated_at,
+        completed_at,
+        created_at
+      FROM support_plan_steps
+      WHERE id = ?
+    `)
+    .get(stepId) as SupportPlanStepRow | undefined;
+
+  return row ? toSupportPlanStep(row) : null;
 }
 
 export function createSession(userId: string, expiresAt: string) {

@@ -262,6 +262,8 @@ export type SupportPlanStepRecord = {
   status: SupportStepStatus;
   note: string;
   followUpAt: string | null;
+  followUpReminderSentAt: string | null;
+  followUpReminderSentFor: string | null;
   statusUpdatedAt: string | null;
   completedAt: string | null;
   createdAt: string;
