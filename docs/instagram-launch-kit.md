@@ -24,6 +24,10 @@ Zip file:
   matching highlight cover PNGs
 - `reel-covers/`
   reel cover PNGs
+- `reel-scripts/`
+  reel hooks, voiceover copy, shot lists, and captions
+- `reel-scripts.md`
+  all reel scripts in one file
 - `story-text-overlays/`
   vertical story-ready text overlays that point people back to the feed carousels
 - `launch-calendar/launch-calendar.md`

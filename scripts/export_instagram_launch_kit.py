@@ -14,6 +14,7 @@ OUTPUT_ROOT = PROJECT_ROOT / "deliverables" / "instagram-launch-kit"
 POSTS_ROOT = OUTPUT_ROOT / "posts"
 HIGHLIGHTS_ROOT = OUTPUT_ROOT / "story-highlights"
 REELS_ROOT = OUTPUT_ROOT / "reel-covers"
+REEL_SCRIPTS_ROOT = OUTPUT_ROOT / "reel-scripts"
 STORY_OVERLAYS_ROOT = OUTPUT_ROOT / "story-text-overlays"
 CALENDAR_ROOT = OUTPUT_ROOT / "launch-calendar"
 PUBLIC_ROOT = PROJECT_ROOT / "public"
@@ -709,60 +710,150 @@ REELS: List[Dict] = [
         "title": "Welcome to Guiding Light",
         "subtitle": "A calm first look at the space and what families can find here.",
         "tone": "brand",
+        "hook": "If autism support feels scattered, this is the calmer place to begin.",
+        "voiceover": "Guiding Light was created to feel like one calmer starting point for autistic people, families, caregivers, and trusted support teams. Instead of opening ten tabs, you can find resources, events, community, and real-life guidance in one space built to feel more human.",
+        "beats": [
+            "Open with homepage hero or logo shot.",
+            "Show resources page and quick filters.",
+            "Show community or events page.",
+            "End on homepage CTA and Instagram handle.",
+        ],
+        "caption": "If support has felt scattered, Guiding Light was built to make it feel calmer and easier to return to. Start here, save what matters, and keep going one step at a time. #GuidingLight #AutismSupport #AutismCommunity",
     },
     {
         "slug": "reel-02-start-here",
         "title": "Start Here for Families",
         "subtitle": "A short guide to the first steps families can take inside the app.",
         "tone": "warm",
+        "hook": "If you are at the beginning, you do not have to figure it all out today.",
+        "voiceover": "One of the hardest parts of an autism journey is not knowing where to begin. Guiding Light helps families start with the next right step, save the resources that fit their real life, and come back to support without feeling buried by information.",
+        "beats": [
+            "Start on a calm founder/family image.",
+            "Show onboarding or resources opening state.",
+            "Point to California guide and outings guide.",
+            "End with save/share CTA.",
+        ],
+        "caption": "For families just starting, the goal is not to learn everything at once. The goal is to find the next right step and come back to the rest later. #AutismParenting #ParentSupport #GuidingLight",
     },
     {
         "slug": "reel-03-global-voices",
         "title": "Global Voices and Belonging",
         "subtitle": "Why representation, queer inclusion, and creator voices matter.",
         "tone": "spotlight",
+        "hook": "Autism is understood differently around the world, but dignity should not change by location.",
+        "voiceover": "Guiding Light makes room for global voices, queer autistic belonging, and creator perspectives because representation helps people feel seen earlier and more fully. The wider the picture becomes, the more possible support can feel.",
+        "beats": [
+            "Open on Global Voices heading.",
+            "Cut to creator cards and identity sections.",
+            "Highlight queer/LGBTQIA+ and representation text.",
+            "Close on invitation to explore the section.",
+        ],
+        "caption": "Global voices matter because recognition matters. The more stories we honor, the more people get to feel seen and supported sooner. #GlobalVoices #QueerAutistic #Neurodiversity",
     },
     {
         "slug": "reel-04-daily-support",
         "title": "Daily Support that Helps",
         "subtitle": "Haircuts, outings, tools, sensory support, and calmer everyday planning.",
         "tone": "calm",
+        "hook": "Support is not only therapy or school. It is also the little everyday details.",
+        "voiceover": "Daily life support can mean haircuts, access passes, nursing rooms, AAC, fidgets, quiet spaces, and tools that help people regulate and feel more prepared. Guiding Light gathers those everyday helps in one place so families can spend less time searching.",
+        "beats": [
+            "Open on resource categories or outing tools.",
+            "Cut to haircut/grooming and outing guides.",
+            "Show support tools and resource cards.",
+            "End with quick filter or collection page.",
+        ],
+        "caption": "Daily support counts too. Haircuts, outings, quiet rooms, tools, and sensory care can change how a whole day feels. #SensorySupport #AutismTools #GuidingLight",
     },
     {
         "slug": "reel-05-california-guide",
         "title": "California Guide and IEP Help",
         "subtitle": "A simpler way to point families toward school and support information.",
         "tone": "brand",
+        "hook": "California school support can feel confusing fast. This guide helps slow it down.",
+        "voiceover": "Guiding Light gathers California-focused information for evaluations, parent rights, insurance pathways, and next steps so families do not have to restart the search every time they need clarity. It is a calmer place to come back to when school support feels heavy.",
+        "beats": [
+            "Open on California guide hero.",
+            "Highlight IEP/school evaluations wording.",
+            "Show parent rights and guide sections.",
+            "End with URL and save CTA.",
+        ],
+        "caption": "California families deserve a guide that makes school support feel clearer, not heavier. Save this for the next time you need to revisit evaluations, rights, or next steps. #CaliforniaParents #IEP #GuidingLight",
     },
     {
         "slug": "reel-06-adulthood",
         "title": "Adulthood and Independence",
         "subtitle": "Why adulthood support matters too.",
         "tone": "spotlight",
+        "hook": "Autistic support should not end after school.",
+        "voiceover": "Adults deserve resources for work, connection, daily life, and independence too. Guiding Light keeps adulthood in the conversation because support should keep growing with the person, not stop when childhood services do.",
+        "beats": [
+            "Open on adulthood carousel cover.",
+            "Show adulthood resource text or pages.",
+            "Call out work, independence, and belonging.",
+            "End with follow/save CTA.",
+        ],
+        "caption": "Autistic adulthood deserves real support too. Work, independence, social life, and daily routines all matter. #AutisticAdults #IndependentLiving #GuidingLight",
     },
     {
         "slug": "reel-07-grooming",
         "title": "Haircuts and Sensory Care",
         "subtitle": "Making everyday care feel more manageable.",
         "tone": "warm",
+        "hook": "Haircuts can feel like a major event when sensory stress is high.",
+        "voiceover": "Haircuts and grooming can carry a lot of stress for families, especially when sensory needs are high. Guiding Light keeps gentler grooming resources easier to reach so everyday care can feel a little more manageable.",
+        "beats": [
+            "Open on haircut/grooming carousel cover.",
+            "Highlight sensory-friendly grooming language.",
+            "Show the resource collection or quick links.",
+            "End with save-for-later CTA.",
+        ],
+        "caption": "Haircuts and grooming support matter because everyday care matters. Save this one if that part of life has felt especially heavy. #AutismHaircuts #SensoryCare #GuidingLight",
     },
     {
         "slug": "reel-08-caregiver-support",
         "title": "Caregiver Support at Home",
         "subtitle": "Resources that hold up the whole family.",
         "tone": "calm",
+        "hook": "Caregivers need support too.",
+        "voiceover": "Home-based help, respite, financial support, and programs like IHSS or paid leave can shape whether families feel stretched past capacity or more able to keep going. Guiding Light includes caregiver-facing resources because caring for the whole family matters.",
+        "beats": [
+            "Open on caregiver support carousel cover.",
+            "Call out home-based help and financial support.",
+            "Show related resource pages or cards.",
+            "End with supportive CTA.",
+        ],
+        "caption": "Caregiving should not mean carrying everything alone. Support for the whole family matters too. #CaregiverSupport #IHSS #GuidingLight",
     },
     {
         "slug": "reel-09-safer-community",
         "title": "Safer Community Support",
         "subtitle": "Why trust and accountability matter in a support space.",
         "tone": "brand",
+        "hook": "A support space should feel welcoming and dependable at the same time.",
+        "voiceover": "Guiding Light includes reporting, moderation, and trusted professional signals because warmth alone is not enough. Families deserve spaces that feel more accountable, clearer to navigate, and safer to return to.",
+        "beats": [
+            "Open on safer community carousel cover.",
+            "Show community or professionals page.",
+            "Call out reporting and moderation/trust language.",
+            "End with trust-focused CTA.",
+        ],
+        "caption": "Support feels stronger when trust is part of the design. Families deserve welcoming spaces that also feel accountable. #SafeCommunity #TrustedSupport #GuidingLight",
     },
     {
         "slug": "reel-10-founder-story",
         "title": "Why Guiding Light Exists",
         "subtitle": "The founder story behind the platform.",
         "tone": "warm",
+        "hook": "Guiding Light began with a real family journey, not just an app idea.",
+        "voiceover": "This space grew out of diagnosis, homeschooling, therapy support, caregiving, and the truth that community made all the difference. Guiding Light exists because one family should not have to feel so alone while trying to find help.",
+        "beats": [
+            "Open on founder story visuals or photos.",
+            "Show founder section on the site.",
+            "Overlay a few key lines from the story.",
+            "Close with hopeful CTA and handle.",
+        ],
+        "caption": "Guiding Light was built from lived experience, not just a project idea. Community, hope, and the real family journey shaped what this space is meant to be. #FounderStory #AutismParenting #GuidingLight",
     },
 ]
 
@@ -1079,6 +1170,7 @@ def write_root_readme() -> None:
         "- Feed carousels: `posts/`",
         "- Story highlight covers: `story-highlights/`",
         "- Reel covers: `reel-covers/`",
+        "- Reel scripts: `reel-scripts/`",
         "- Story text overlays: `story-text-overlays/`",
         "- Launch calendars: `launch-calendar/`",
         "",
@@ -1129,6 +1221,52 @@ def write_caption_files() -> None:
     (OUTPUT_ROOT / "caption-variations.md").write_text("\n".join(caption_variations_md), encoding="utf-8")
 
 
+def write_reel_scripts() -> None:
+    reel_index_md: List[str] = ["# Guiding Light Reel Scripts", ""]
+
+    for index, reel in enumerate(REELS, start=1):
+        script_path = REEL_SCRIPTS_ROOT / f"{reel['slug']}.md"
+        lines = [
+            f"# {reel['title']}",
+            "",
+            f"Cover file: ../reel-covers/{reel['slug']}.png",
+            "",
+            f"Hook: {reel['hook']}",
+            "",
+            "## Voiceover",
+            "",
+            reel["voiceover"],
+            "",
+            "## Shot list",
+            "",
+        ]
+        for beat_index, beat in enumerate(reel["beats"], start=1):
+            lines.append(f"{beat_index}. {beat}")
+        lines.extend(
+            [
+                "",
+                "## Caption",
+                "",
+                reel["caption"],
+                "",
+            ]
+        )
+        script_path.write_text("\n".join(lines), encoding="utf-8")
+
+        reel_index_md.extend(
+            [
+                f"## Reel {index}: {reel['title']}",
+                "",
+                f"Hook: {reel['hook']}",
+                "",
+                reel["caption"],
+                "",
+            ]
+        )
+
+    (OUTPUT_ROOT / "reel-scripts.md").write_text("\n".join(reel_index_md), encoding="utf-8")
+
+
 def export_assets() -> None:
     if OUTPUT_ROOT.exists():
         shutil.rmtree(OUTPUT_ROOT)
@@ -1136,11 +1274,13 @@ def export_assets() -> None:
     POSTS_ROOT.mkdir(parents=True, exist_ok=True)
     HIGHLIGHTS_ROOT.mkdir(parents=True, exist_ok=True)
     REELS_ROOT.mkdir(parents=True, exist_ok=True)
+    REEL_SCRIPTS_ROOT.mkdir(parents=True, exist_ok=True)
     STORY_OVERLAYS_ROOT.mkdir(parents=True, exist_ok=True)
     CALENDAR_ROOT.mkdir(parents=True, exist_ok=True)
 
     write_root_readme()
     write_caption_files()
+    write_reel_scripts()
 
     for post in POSTS:
         post_dir = POSTS_ROOT / post["slug"]
