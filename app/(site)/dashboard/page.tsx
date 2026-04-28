@@ -28,6 +28,7 @@ import { partitionByLocation } from "@/lib/location";
 import { buildPremiumRoadmap } from "@/lib/membership";
 import { buildRecommendations } from "@/lib/recommendations";
 import { getQueryMessage, type PageSearchParams } from "@/lib/search-params";
+import { getFeaturedGuidedPathways } from "@/lib/guided-pathways";
 import {
   getSupportPlanDueNow,
   ensureCurrentSupportPlanForUser,
@@ -153,6 +154,7 @@ export default async function DashboardPage({
         dueNow.thisWeek.length > 0 ? `${dueNow.thisWeek.length} later this week` : null,
       ].filter((label): label is string => Boolean(label))
     : [];
+  const featuredGuidedPathways = getFeaturedGuidedPathways(currentUser, 3);
 
   return (
     <div className="page">
@@ -192,6 +194,57 @@ export default async function DashboardPage({
           <strong>{dueNow?.totalCount ?? 0}</strong>
           <span>Follow-ups due now</span>
         </article>
+      </section>
+
+      <section className="section split-layout">
+        <div className="section-panel section-panel--accent">
+          <SectionHeading
+            eyebrow="Guided paths"
+            intro="When support feels heavy, these calmer paths can help you decide what to do first, what to prepare, and what link is worth opening now."
+            title="A steadier place to begin."
+          />
+          <div className="stack-list">
+            <article className="sub-card">
+              <h3>Why this matters</h3>
+              <p>
+                Resources are helpful, but sometimes what you really need is a
+                clearer order of action. Guided paths help turn support into a
+                calmer next step instead of another search spiral.
+              </p>
+            </article>
+            <article className="sub-card">
+              <h3>What you get</h3>
+              <ul className="bullet-list bullet-list--wide">
+                <li>What to do now</li>
+                <li>What to prepare before calls or meetings</li>
+                <li>Questions worth asking</li>
+                <li>Trusted links pulled closer to the top</li>
+              </ul>
+            </article>
+          </div>
+        </div>
+
+        <div className="section-panel">
+          <SectionHeading
+            eyebrow="Most relevant right now"
+            intro="These are shaped around your goals, age focus, and role so you can move into the path that fits your life fastest."
+            title="Your best starting points."
+          />
+          <div className="stack-list">
+            {featuredGuidedPathways.map((pathway) => (
+              <article className="sub-card" key={pathway.slug}>
+                <p className="feature-label">{pathway.eyebrow}</p>
+                <h3>{pathway.title}</h3>
+                <p>{pathway.summary}</p>
+                <div className="button-row button-row--compact">
+                  <Link className="button-primary" href={`/guided-paths/${pathway.slug}`}>
+                    Open this path
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
       </section>
 
       {supportPlan ? (

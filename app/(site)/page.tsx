@@ -8,6 +8,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getStats, listCommunityPosts, listEvents, listResources } from "@/lib/data";
 import { formatMonthDay } from "@/lib/formatters";
 import { homeGlobalHighlights } from "@/lib/global-voices";
+import { getFeaturedGuidedPathways } from "@/lib/guided-pathways";
 import { isClerkConfigured } from "@/lib/platform";
 import { buildRecommendations } from "@/lib/recommendations";
 import {
@@ -43,6 +44,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     ? buildRecommendations(currentUser, resources, events)
     : null;
   const digitalQuickStarts = getResourceQuickStartSummaries(resources);
+  const featuredGuidedPathways = getFeaturedGuidedPathways(currentUser, 3);
 
   return (
     <div className="page">
@@ -308,6 +310,33 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           </Link>
           <Link className="button-secondary" href="/global-voices#creator-references">
             See queer and creator voices
+          </Link>
+        </div>
+      </section>
+
+      <section className="section">
+        <SectionHeading
+          eyebrow="Start here"
+          intro="When the next step feels bigger than the search, guided pathways can help turn a hard season into a calmer order of action."
+          title="Choose a support path, not just another tab."
+        />
+        <div className="card-grid card-grid--three">
+          {featuredGuidedPathways.map((pathway) => (
+            <article className="feature-card pathway-card" key={pathway.slug}>
+              <p className="feature-label">{pathway.eyebrow}</p>
+              <h3>{pathway.title}</h3>
+              <p>{pathway.summary}</p>
+              <div className="button-row button-row--compact">
+                <Link className="button-primary" href={`/guided-paths/${pathway.slug}`}>
+                  Open this path
+                </Link>
+              </div>
+            </article>
+          ))}
+        </div>
+        <div className="button-row">
+          <Link className="button-secondary" href="/guided-paths">
+            Explore all guided paths
           </Link>
         </div>
       </section>

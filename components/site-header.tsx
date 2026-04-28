@@ -10,6 +10,7 @@ import { isClerkConfigured } from "@/lib/platform";
 
 const navItems = [
   { href: "/", label: "Home" },
+  { href: "/guided-paths", label: "Start Here" },
   { href: "/resources", label: "Resources" },
   { href: "/community", label: "Community" },
   { href: "/global-voices", label: "Global Voices" },
